@@ -1,15 +1,15 @@
 {
-  "dva": { "name_jp": "D.Va", "role": "Tank", "aliases": ["d.va", "dva", "ディーヴァ"] },
-  "doomfist": { "name_jp": "ドゥームフィスト", "role": "Tank", "aliases": ["doomfist", "ドゥーム"] },
-  "junkerqueen": { "name_jp": "ジャンカー・クイーン", "role": "Tank", "aliases": ["junkerqueen", "jq", "クイーン"] },
-  "reinhardt": { "name_jp": "ラインハルト", "role": "Tank", "aliases": ["reinhardt", "ハルト"] },
-  "zarya": { "name_jp": "ザリア", "role": "Tank", "aliases": ["zarya"] },
-  "winston": { "name_jp": "ウィンストン", "role": "Tank", "aliases": ["winston", "ゴリラ"] },
-  "genji": { "name_jp": "ゲンジ", "role": "Damage", "aliases": ["genji"] },
-  "reaper": { "name_jp": "リーパー", "role": "Damage", "aliases": ["reaper"] },
-  "soldier76": { "name_jp": "ソルジャー76", "role": "Damage", "aliases": ["soldier76", "soldier:76", "ソルジャー"] },
-  "pharah": { "name_jp": "ファラ", "role": "Damage", "aliases": ["pharah"] },
-  "ana": { "name_jp": "アナ", "role": "Support", "aliases": ["ana"] },
-  "lucio": { "name_jp": "ルシオ", "role": "Support", "aliases": ["lúcio", "lucio"] },
-  "mercy": { "name_jp": "マーシー", "role": "Support", "aliases": ["mercy"] }
+  "dva": { "name_jp": "D.Va", "role": "Tank" },
+  "doomfist": { "name_jp": "ドゥームフィスト", "role": "Tank" },
+  "junkerqueen": { "name_jp": "ジャンカー・クイーン", "role": "Tank" },
+  "reinhardt": { "name_jp": "ラインハルト", "role": "Tank" },
+  "zarya": { "name_jp": "ザリア", "role": "Tank" },
+  "winston": { "name_jp": "ウィンストン", "role": "Tank" },
+  "genji": { "name_jp": "ゲンジ", "role": "Damage" },
+  "reaper": { "name_jp": "リーパー", "role": "Damage" },
+  "soldier76": { "name_jp": "ソルジャー76", "role": "Damage" },
+  "pharah": { "name_jp": "ファラ", "role": "Damage" },
+  "ana": { "name_jp": "アナ", "role": "Support" },
+  "lucio": { "name_jp": "ルシオ", "role": "Support" },
+  "mercy": { "name_jp": "マーシー", "role": "Support" }
 }

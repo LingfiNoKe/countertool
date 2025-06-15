@@ -1,0 +1,14 @@
+{
+    "King's Row": {
+      "reinhardt": 1.0,
+      "ana": 0.5
+    },
+    "Ilios": {
+      "lucio": 1.5,
+      "pharah": 0.5
+    },
+    "Watchpoint: Gibraltar": {
+      "winston": 1.0,
+      "mercy": 0.5
+    }
+}

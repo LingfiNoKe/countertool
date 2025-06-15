@@ -11,7 +11,7 @@
         <h1>ピックアップ提案ツール</h1>
         <p class="description">
             あなたのロールを選択後、BANヒーローとチーム構成を入力してください。<br>
-            分析したい対象（自分、味方、敵）のヒーローボタンを<b>クリック</b>すると、個別の対策案が表示されます。
+            分析したい場合は、<b>「分析実行」</b>ボタンを押してください。
         </p>
         
         <div class="setup-panel">
@@ -33,14 +33,23 @@
                 </div>
             </div>
         </div>
+
+        <!-- ★★★ ここにマップ選択パネルを追加しました ★★★ -->
+        <div class="map-selection">
+            <h3>2. マップ選択 (オプション)</h3>
+            <select id="map-selector">
+                <option value="">マップを選択しない</option>
+                <!-- JavaScriptによってマップ名がここに追加されます -->
+            </select>
+        </div>
         
         <div class="hero-palette">
-            <h3>2. BANヒーローを選択 (最大4体)</h3>
+            <h3>3. BANヒーローを選択 (最大4体)</h3>
             <div class="role-section-container" id="ban-palette"></div>
         </div>
 
         <div class="team-composition">
-            <h3>3. チーム構成を入力</h3>
+            <h3>4. チーム構成を入力</h3>
             <div class="team-box" id="your-team-box">
                 <h2>味方チーム <span class="team-count" id="your-team-count">0/5</span></h2>
                 <div class="hero-display" id="your-team-display"></div>
@@ -52,16 +61,16 @@
         </div>
         
         <div class="hero-palette">
-             <h3>4. ヒーローをクリックしてチームに追加</h3>
+             <h3>5. ヒーローをクリックしてチームに追加</h3>
             <div class="role-section-container" id="pick-palette"></div>
         </div>
         
         <div class="analysis-buttons">
-            <button id="overall-analysis-button" class="analysis-btn">チーム全体への最適ピックを分析</button>
+            <button id="analysis-button" class="analysis-btn">分析実行</button>
         </div>
 
         <div id="result"></div>
     </div>
-    <script src="script.js?v=final"></script>
+    <script src="script.js?v=final_v2"></script>
 </body>
 </html>

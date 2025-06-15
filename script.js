@@ -1,4 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // DOM要素の取得
     const mapSelector = document.getElementById('map-selector');
     const heroPalette = document.querySelector('.hero-palette');
     const yourTeamDisplay = document.getElementById('your-team-display');
@@ -11,10 +12,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const exportButton = document.getElementById('exportButton');
     const resetButton = document.getElementById('resetButton');
 
+    // 状態管理
     let heroMaster = {}, counterData = {}, mapData = {}, defaultCounterData = {};
     let yourTeam = new Set(), enemyTeam = new Set();
-    let selectedTeamForAdding = 'your-team';
-
+    
+    // 初期化処理
     async function initialize() {
         try {
             const [heroes, counters, maps] = await Promise.all([
@@ -55,14 +57,21 @@ document.addEventListener('DOMContentLoaded', () => {
         heroKeys.sort();
 
         for (const key of heroKeys) {
-            roles[heroMaster[key].role].push(key);
+            if (roles[heroMaster[key].role]) {
+                roles[heroMaster[key].role].push(key);
+            }
         }
 
         heroPalette.innerHTML = '';
         for (const role in roles) {
             const roleSection = document.createElement('div');
             roleSection.className = 'role-section';
-            roleSection.innerHTML = `<div class="role-title">${role}</div>`;
+            
+            const roleTitle = document.createElement('div');
+            roleTitle.className = 'role-title';
+            roleTitle.textContent = role;
+            roleSection.appendChild(roleTitle);
+
             const buttonContainer = document.createElement('div');
             buttonContainer.className = 'button-container';
             roles[role].forEach(heroKey => {
@@ -72,7 +81,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 button.dataset.heroKey = heroKey;
                 buttonContainer.appendChild(button);
             });
-            roleSection.appendChild(roleSection);
+            roleSection.appendChild(buttonContainer);
+            
+            // ★★★ ここが修正点です ★★★
+            // 自分自身(roleSection)ではなく、親となるheroPaletteに追加します。
+            heroPalette.appendChild(roleSection);
         }
     }
 
@@ -107,30 +120,31 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (enemyTeam.has(heroKey)) {
             analyzeVsEnemy(heroKey);
         } else {
+            // チーム選択ロジック（どちらかのチームに空きがあれば追加）
             if (yourTeam.size < 5) {
                 yourTeam.add(heroKey);
             } else if (enemyTeam.size < 5) {
                 enemyTeam.add(heroKey);
             } else {
-                alert("両チームとも満員です。");
+                alert("両チームとも満員です。ヒーローを解除してから選択してください。");
             }
         }
         updateUI();
     }
-
+    
     function updateUI() {
         document.querySelectorAll('.hero-button').forEach(button => {
             const key = button.dataset.heroKey;
-            button.classList.remove('selected-for-your-team', 'selected-for-enemy-team', 'disabled');
+            button.classList.remove('selected-for-your-team', 'selected-for-enemy-team');
             if (yourTeam.has(key)) {
                 button.classList.add('selected-for-your-team');
             } else if (enemyTeam.has(key)) {
                 button.classList.add('selected-for-enemy-team');
             }
         });
-        updateTeamDisplay(yourTeamDisplay, yourTeam, 'your-team');
+        updateTeamDisplay(yourTeamDisplay, yourTeam);
         yourTeamCount.textContent = `${yourTeam.size}/5`;
-        updateTeamDisplay(enemyTeamDisplay, enemyTeam, 'enemy-team');
+        updateTeamDisplay(enemyTeamDisplay, enemyTeam);
         enemyTeamCount.textContent = `${enemyTeam.size}/5`;
     }
 
@@ -156,19 +170,21 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         const title = `あなたの「${heroMaster[myHeroKey].name_jp}」をカウンターしている敵（${threats.map(t => heroMaster[t].name_jp).join(', ')}）への対策案`;
-        const results = calculateBestPicks(enemyTeam, yourTeam, new Set([myHeroKey]));
+        const currentTeam = new Set(yourTeam);
+        currentTeam.delete(myHeroKey);
+        const results = calculateBestPicks(enemyTeam, currentTeam, new Set([myHeroKey]));
         displayResults(title, results);
     }
     
     function analyzeVsEnemy(enemyHeroKey) {
         const title = `敵の「${heroMaster[enemyHeroKey].name_jp}」への直接的なカウンター案`;
-        const results = calculateBestPicks(new Set([enemyHeroKey]), yourTeam, new Set());
+        const results = calculateBestPicks(enemyTeam, yourTeam);
         displayResults(title, results);
     }
     
     function analyzeOverall(targetTeam) {
         const title = 'チーム全体に対する総合的な推奨ピック';
-        const results = calculateBestPicks(targetTeam, yourTeam, new Set());
+        const results = calculateBestPicks(targetTeam, yourTeam);
         displayResults(title, results);
     }
 
@@ -215,14 +231,14 @@ document.addEventListener('DOMContentLoaded', () => {
         for (const role in results) {
             if (results[role] && results[role].length > 0) {
                 const roleDiv = document.createElement('div');
-                roleDiv.className = 'role-result';
                 const list = document.createElement('ul');
                 results[role].slice(0, 3).forEach(hero => {
                     const item = document.createElement('li');
                     item.innerHTML = `<span class="hero-name">${hero.name}</span> <span class="hero-score">スコア: ${hero.score.toFixed(1)}</span>`;
                     list.appendChild(item);
                 });
-                roleDiv.appendChild(roleDiv);
+                roleDiv.appendChild(list);
+                resultDiv.appendChild(roleDiv);
             }
         }
     }

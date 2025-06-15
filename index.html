@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Overwatch カウンターピック提案ツール</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="container">
+        <h1>カウンターピック提案ツール</h1>
+        <p class="description">
+            チーム構成を入力後、分析したい対象（自分、味方、敵）のヒーローボタンを<b>もう一度クリック</b>するか、<b>「全体分析」</b>ボタンを押してください。
+        </p>
+        
+        <div class="control-panel">
+            <h3>設定管理</h3>
+            <p>自分用にカスタマイズしたカウンター設定ファイル（.json）を読み込んだり、現在の設定を書き出して保存できます。</p>
+            <div class="button-group">
+                <label for="importFile" class="file-label">設定をインポート</label>
+                <input type="file" id="importFile" accept=".json" style="display: none;">
+                <button id="exportButton">現在の設定をエクスポート</button>
+                <button id="resetButton">デフォルト設定に戻す</button>
+            </div>
+        </div>
+
+        <div class="team-selection-grid">
+            <div id="your-team-selector" class="team-box">
+                <h2>味方チーム (Your Team) <span id="your-team-count">0/5</span></h2>
+                <div class="selected-heroes" id="your-team-display"></div>
+            </div>
+            <div id="enemy-team-selector" class="team-box">
+                <h2>敵チーム (Enemy Team) <span id="enemy-team-count">0/5</span></h2>
+                <div class="selected-heroes" id="enemy-team-display"></div>
+            </div>
+        </div>
+
+        <div class="hero-palette">
+            <!-- JavaScriptによってヒーロー選択パネルがここに生成されます -->
+        </div>
+        
+        <div class="analysis-buttons">
+            <button id="overall-analysis-button" class="analysis-btn">チーム全体を分析</button>
+        </div>
+
+        <div id="result">
+            <!-- 計算結果がここに表示されます -->
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

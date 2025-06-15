@@ -5,8 +5,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const pickPalette = document.getElementById('pick-palette');
     const yourTeamDisplay = document.getElementById('your-team-display');
     const enemyTeamDisplay = document.getElementById('enemy-team-display');
-    const yourTeamCount = document.getElementById('your-team-count');
-    const enemyTeamCount = document.getElementById('enemy-team-count');
     const analysisButton = document.getElementById('analysis-button');
     const resultDiv = document.getElementById('result');
     const importFile = document.getElementById('importFile');
@@ -18,138 +16,128 @@ document.addEventListener('DOMContentLoaded', () => {
     let playerRole = null;
     let bannedHeroes = new Set();
     let yourTeam = new Set(), enemyTeam = new Set();
-    let disabledHeroes = new Set();
+    let yourHero = null;
 
-    // ★★★ ここからが修正の核心：全ての関数を、呼び出される前に定義する ★★★
+    // --- 補助関数 (呼び出される前に定義) ---
+    const loadData = () => { try { const saved = localStorage.getItem('owCounterConfig'); counterData = saved ? JSON.parse(saved) : { ...defaultCounterData }; } catch (e) { counterData = { ...defaultCounterData }; }};
+    const saveData = () => { localStorage.setItem('owCounterConfig', JSON.stringify(counterData)); };
+    const getCounterScore = (heroA, heroB) => { const keys = [heroA, heroB].sort(); const vsKey = `${keys[0]} vs ${keys[1]}`; if (counterData[vsKey] !== undefined) { const val = counterData[vsKey]; return heroA === keys[0] ? val : -val; } return 0; };
+    const countRoles = (teamSet) => { const roles = { Tank: 0, Damage: 0, Support: 0 }; teamSet.forEach(key => { if(heroMaster[key]) roles[heroMaster[key].role]++; }); return roles; };
 
-    // --- 補助関数 ---
-    function loadData() { try { const savedCounters = localStorage.getItem('owCounterConfig'); counterData = savedCounters ? JSON.parse(savedCounters) : { ...defaultCounterData }; } catch (e) { counterData = { ...defaultCounterData }; } }
-    function saveData() { localStorage.setItem('owCounterConfig', JSON.stringify(counterData)); }
-    function getCounterScore(heroA, heroB) { const sortedKeys = [heroA, heroB].sort(); const vsKey = `${sortedKeys[0]} vs ${sortedKeys[1]}`; if (counterData[vsKey] !== undefined) { const value = counterData[vsKey]; return (heroA === sortedKeys[0]) ? value : -value; } return 0; }
-    function countRoles(teamSet) { const roles = { Tank: 0, Damage: 0, Support: 0 }; teamSet.forEach(key => { if(heroMaster[key]) roles[heroMaster[key].role]++; }); return roles; }
-    
-    // --- UI生成・更新関数 ---
+    // --- UI生成 ---
     function createPaletteContent(paletteElement) {
         const roles = { Tank: [], Damage: [], Support: [] };
-        const heroKeys = Object.keys(heroMaster).sort((a, b) => heroMaster[a].name_jp.localeCompare(heroMaster[b].name_jp, 'ja'));
-        for (const key of heroKeys) { if (roles[heroMaster[key].role]) { roles[heroMaster[key].role].push(key); } }
+        const heroKeys = Object.keys(heroMaster).sort((a,b) => heroMaster[a].name_jp.localeCompare(heroMaster[b].name_jp, 'ja'));
+        for (const key of heroKeys) { if (roles[heroMaster[key].role]) roles[heroMaster[key].role].push(key); }
         paletteElement.innerHTML = '';
         for (const role in roles) {
-            const roleSection = document.createElement('div');
-            roleSection.className = 'role-section';
-            roleSection.innerHTML = `<div class="role-title">${role}</div>`;
-            const buttonContainer = document.createElement('div');
-            buttonContainer.className = 'button-container';
+            const section = document.createElement('div');
+            section.className = 'role-section';
+            section.innerHTML = `<div class="role-title">${role}</div>`;
+            const container = document.createElement('div');
+            container.className = 'button-container';
             roles[role].forEach(heroKey => {
                 const button = document.createElement('button');
                 button.className = 'hero-button';
                 button.textContent = heroMaster[heroKey].name_jp;
                 button.dataset.heroKey = heroKey;
-                buttonContainer.appendChild(button);
+                container.appendChild(button);
             });
-            roleSection.appendChild(buttonContainer);
-            paletteElement.appendChild(roleSection);
+            section.appendChild(container);
+            paletteElement.appendChild(section);
         }
     }
-    function createMapSelector() { const mapNames = Object.keys(mapData).sort(); mapNames.forEach(mapName => { const option = document.createElement('option'); option.value = mapName; option.textContent = mapName; mapSelector.appendChild(option); }); }
-    function updateDisabledHeroes() { disabledHeroes = new Set([...bannedHeroes, ...yourTeam, ...enemyTeam]); }
-    function updatePaletteUI() { [banPalette, pickPalette].forEach(palette => { palette.querySelectorAll('.hero-button').forEach(button => { const key = button.dataset.heroKey; button.classList.remove('selected-your', 'selected-enemy', 'banned', 'disabled'); if (yourTeam.has(key)) button.classList.add('selected-your'); if (enemyTeam.has(key)) button.classList.add('selected-enemy'); if (bannedHeroes.has(key)) button.classList.add('banned'); if (disabledHeroes.has(key)) button.classList.add('disabled'); }); }); }
-    function updateTeamDisplay(displayElement, teamSet) { displayElement.innerHTML = ''; Array.from(teamSet).forEach(heroKey => { const button = document.createElement('button'); button.className = 'hero-button'; button.textContent = heroMaster[heroKey].name_jp; button.addEventListener('click', (e) => { e.stopPropagation(); teamSet.delete(heroKey); updateDisabledHeroes(); updatePaletteUI(); updateTeamDisplays(); }); displayElement.appendChild(button); }); }
-    function updateTeamDisplays() { updateTeamDisplay(yourTeamDisplay, yourTeam); document.getElementById('your-team-count').textContent = `${yourTeam.size}/5`; updateTeamDisplay(enemyTeamDisplay, enemyTeam); document.getElementById('enemy-team-count').textContent = `${enemyTeam.size}/5`; }
 
-    // --- 分析ロジック関数 ---
-    function calculateBestPicks(targetTeam, ownTeam, heroesToExclude = new Set()) {
-        const results = { Tank: [], Damage: [], Support: [] };
-        const allHeroKeys = Object.keys(heroMaster);
-        const selectedMap = document.getElementById('map-selector').value;
-        allHeroKeys.forEach(candidateKey => {
-            if (disabledHeroes.has(candidateKey) || ownTeam.has(candidateKey) || heroesToExclude.has(candidateKey)) return;
-            if (playerRole && heroMaster[candidateKey].role !== playerRole) return;
-            let score = 0;
-            targetTeam.forEach(enemyKey => score += getCounterScore(candidateKey, enemyKey));
-            if (selectedMap && mapData[selectedMap] && mapData[selectedMap][candidateKey]) { score += mapData[selectedMap][candidateKey]; }
-            const role = heroMaster[candidateKey].role;
-            if(role) results[role].push({ key: candidateKey, name: heroMaster[candidateKey].name_jp, score });
+    // --- UI更新 ---
+    function updateUI() {
+        const allPicks = new Set([...yourTeam, ...enemyTeam]);
+        const disabledSet = new Set([...bannedHeroes, ...allPicks]);
+
+        document.querySelectorAll('.hero-button').forEach(button => {
+            const key = button.dataset.heroKey;
+            button.classList.remove('selected-your', 'selected-enemy', 'banned', 'disabled');
+            if (yourTeam.has(key)) button.classList.add('selected-your');
+            if (enemyTeam.has(key)) button.classList.add('selected-enemy');
+            if (bannedHeroes.has(key)) button.classList.add('banned');
+            if (disabledSet.has(key)) button.classList.add('disabled');
         });
-        for (const role in results) { results[role].sort((a, b) => b.score - a.score); }
+        
+        updateTeamDisplay(yourTeamDisplay, yourTeam);
+        document.getElementById('your-team-count').textContent = `${yourTeam.size}/5`;
+        updateTeamDisplay(enemyTeamDisplay, enemyTeam);
+        document.getElementById('enemy-team-count').textContent = `${enemyTeam.size}/5`;
+    }
+
+    function updateTeamDisplay(displayElement, teamSet) {
+        displayElement.innerHTML = '';
+        teamSet.forEach(heroKey => {
+            const button = document.createElement('button');
+            button.className = 'hero-button';
+            button.textContent = heroMaster[heroKey].name_jp;
+            button.dataset.heroKey = heroKey;
+            displayElement.appendChild(button);
+        });
+    }
+
+    // --- イベントハンドラ ---
+    function handleRoleSelect(e) { if (e.target.classList.contains('role-btn')) { playerRole = e.target.dataset.role; localStorage.setItem('playerRole', playerRole); document.querySelectorAll('.role-btn').forEach(btn => btn.classList.remove('active')); e.target.classList.add('active'); } }
+    function toggleBan(e) { if (e.target.classList.contains('hero-button')) { const key = e.target.dataset.heroKey; if (bannedHeroes.has(key)) bannedHeroes.delete(key); else if (bannedHeroes.size < 4) bannedHeroes.add(key); else alert("BANは最大4体までです。"); updateUI(); } }
+    function handlePick(e) { if (e.target.classList.contains('hero-button')) { const key = e.target.dataset.heroKey; if (bannedHeroes.has(key) || yourTeam.has(key) || enemyTeam.has(key)) return; const role = heroMaster[key].role; const roleLimit = (role === 'Tank' ? 1 : 2); if (countRoles(yourTeam)[role] < roleLimit) yourTeam.add(key); else if (countRoles(enemyTeam)[role] < roleLimit) enemyTeam.add(key); else alert(`このロールのヒーローは既に両チームとも満員です。`); updateUI(); } }
+    function handleDisplayClick(e) { if (e.target.classList.contains('hero-button')) { const key = e.target.dataset.heroKey; if (yourTeam.has(key)) yourTeam.delete(key); if (enemyTeam.has(key)) enemyTeam.delete(key); updateUI(); } }
+    function analyze() { resultDiv.innerHTML = ''; if (!playerRole) { alert("まず、あなたのロールを選択してください。"); return; } yourHero = Array.from(yourTeam).find(k => heroMaster[k] && heroMaster[k].role === playerRole); if (!yourHero) { analyzeForTeam(); return; } analyzeForSelf(); analyzeForTeam(); }
+
+    // --- 分析ロジック ---
+    function analyzeForSelf() { const threats = Array.from(enemyTeam).filter(ek => getCounterScore(yourHero, ek) < -1.0); const title = `【自己分析】あなたの「${heroMaster[yourHero].name_jp}」への対策案`; const results = threats.length > 0 ? calculateBestPicks(new Set([yourHero])) : {}; displayResults(title, results, threats.length > 0 ? "" : "明確なカウンターは受けていません。"); }
+    function analyzeForTeam() { const biggestThreat = findBiggestTeamThreat(); let title = "【チーム課題】現構成での最適ピック"; let results = calculateBestPicks(new Set()); if (biggestThreat) { title = `【チーム課題】敵の脅威「${heroMaster[biggestThreat].name_jp}」への対策案`; results = calculateBestPicks(new Set(), biggestThreat); } displayResults(title, results); }
+    function findBiggestTeamThreat() { let maxThreatScore = 0; let biggestThreat = null; enemyTeam.forEach(ek => { let score = 0; yourTeam.forEach(yk => { score += getCounterScore(ek, yk); }); if (score > maxThreatScore) { maxThreatScore = score; biggestThreat = ek; } }); return biggestThreat; }
+    function calculateBestPicks(excludeSet = new Set(), specificTarget = null) {
+        const results = { Tank: [], Damage: [], Support: [] };
+        const availableHeroes = Object.keys(heroMaster).filter(k => !disabledHeroes.has(k) && !excludeSet.has(k) && heroMaster[k].role === playerRole);
+        const targetTeam = specificTarget ? new Set([specificTarget]) : enemyTeam;
+        const selectedMap = document.getElementById('map-selector').value;
+        availableHeroes.forEach(ck => {
+            let score = 0;
+            targetTeam.forEach(ek => score += getCounterScore(ck, ek));
+            if (selectedMap && mapData[selectedMap]?.[ck]) score += mapData[selectedMap][ck];
+            results[playerRole].push({ name: heroMaster[ck].name_jp, score });
+        });
+        results[playerRole].sort((a, b) => b.score - a.score);
         return results;
     }
-    function displayResults(title, results, emptyMessage = "") {
+    function displayResults(title, results, emptyMsg = "") {
         const section = document.createElement('div');
         section.className = 'result-section';
         section.innerHTML = `<h3 class="result-title">${title}</h3>`;
-        const resultList = results[playerRole];
-        if (!resultList || resultList.length === 0) { section.innerHTML += `<p>${emptyMessage || "有効なピックはありません。"}</p>`; } 
-        else { const list = document.createElement('ul'); list.className = 'result-list'; resultList.slice(0, 3).forEach(hero => { const item = document.createElement('li'); item.innerHTML = `<span class="hero-name">${hero.name}</span> <span class="hero-score">スコア: ${hero.score.toFixed(1)}</span>`; list.appendChild(item); }); section.appendChild(list); }
+        const listContent = results[playerRole]?.slice(0, 3).map(h => `<li><span class="hero-name">${h.name}</span> <span class="hero-score">スコア: ${h.score.toFixed(1)}</span></li>`).join('') || '';
+        if (listContent) { section.innerHTML += `<ul class="result-list">${listContent}</ul>`; } 
+        else { section.innerHTML += `<p>${emptyMsg || "有効なピックはありません。"}</p>`; }
         resultDiv.appendChild(section);
     }
-    function findThreatsFor(heroKey, oppositeTeam) { return Array.from(oppositeTeam).filter(enemyKey => getCounterScore(heroKey, enemyKey) < -1.0); }
-    function findBiggestTeamThreat() { let maxThreatScore = -Infinity; let biggestThreat = null; enemyTeam.forEach(enemyKey => { let threatScore = 0; yourTeam.forEach(yourKey => { threatScore += getCounterScore(enemyKey, yourKey); }); if (threatScore > maxThreatScore) { maxThreatScore = threatScore; biggestThreat = enemyKey; } }); return biggestThreat; }
+    
+    // --- 設定管理 (変更なし) ---
+    const handleImport = (e) => { const file = e.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = e => { try { counterData = JSON.parse(e.target.result); saveData(); alert('設定がインポートされました。'); } catch (err) { alert('ファイルの読み込みに失敗しました。'); } }; reader.readAsText(file); };
+    const handleExport = () => { const dataStr = `data:text/json;charset=utf-8,${encodeURIComponent(JSON.stringify(counterData, null, 2))}`; const a = document.createElement('a'); a.href = dataStr; a.download = "ow_counters_config.json"; a.click(); a.remove(); };
+    const handleReset = () => { if (confirm('設定をデフォルトに戻しますか？')) { counterData = { ...defaultCounterData }; saveData(); alert('設定がリセットされました。'); } };
 
-    // --- イベントハンドラ関数 ---
-    function toggleBan(heroKey) { if (bannedHeroes.has(heroKey)) { bannedHeroes.delete(heroKey); } else { if (bannedHeroes.size < 4) { bannedHeroes.add(heroKey); } else { alert("BANは最大4体までです。"); } } updateDisabledHeroes(); updatePaletteUI(); updateTeamDisplays(); }
-    function handleHeroPick(heroKey) { if (disabledHeroes.has(heroKey)) return; const role = heroMaster[heroKey].role; const yourTeamRoles = countRoles(yourTeam); const enemyTeamRoles = countRoles(enemyTeam); const roleLimit = (role === 'Tank' ? 1 : 2); if (yourTeamRoles[role] < roleLimit) { yourTeam.add(heroKey); } else if (enemyTeamRoles[role] < roleLimit) { enemyTeam.add(heroKey); } else { alert(`このロールのヒーローは既に両チームとも満員です。`); } updateDisabledHeroes(); updatePaletteUI(); updateTeamDisplays(); }
-    function analyze() {
-        if (!playerRole) { alert("まず、あなたのロールを選択してください。"); return; }
-        resultDiv.innerHTML = '';
-        const yourHero = Array.from(yourTeam).find(key => heroMaster[key] && heroMaster[key].role === playerRole);
-        if (!yourHero) { displayResults("総合的な推奨ピック", calculateBestPicks(enemyTeam, yourTeam)); return; }
-
-        const selfAnalysisTitle = `【自己分析】あなたの「${heroMaster[yourHero].name_jp}」への対策案`;
-        const selfThreats = findThreatsFor(yourHero, enemyTeam);
-        const selfResults = selfThreats.length > 0 ? calculateBestPicks(enemyTeam, yourTeam, new Set([yourHero])) : {};
-        displayResults(selfAnalysisTitle, selfResults, selfThreats.length > 0 ? "" : "明確なカウンターは受けていません。");
-
-        const teamThreat = findBiggestTeamThreat();
-        if (teamThreat) {
-            const teamAnalysisTitle = `【チーム課題】敵の脅威「${heroMaster[teamThreat].name_jp}」への対策案`;
-            const teamResults = calculateBestPicks(enemyTeam, yourTeam, new Set());
-            displayResults(teamAnalysisTitle, teamResults);
-        }
-    }
-    function handleImport(event){const file=event.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=e=>{try{counterData=JSON.parse(e.target.result);saveData();alert('設定がインポートされました。')}catch(err){alert('ファイルの読み込みに失敗しました。')}};reader.readAsText(file)}
-    function handleExport(){const dataStr="data:text/json;charset=utf-8,"+encodeURIComponent(JSON.stringify(counterData,null,2));const downloadNode=document.createElement('a');downloadNode.setAttribute("href",dataStr);downloadNode.setAttribute("download","ow_counters_config.json");document.body.appendChild(downloadNode);downloadNode.click();downloadNode.remove()}
-    function handleReset(){if(confirm('現在の設定を破棄し、デフォルトに戻しますか？')){counterData={...defaultCounterData};saveData();alert('設定がリセットされました。')}}
-    function setupEventListeners() {
-        playerRoleSelector.addEventListener('click', e => { if (e.target.classList.contains('role-btn')) { playerRole = e.target.dataset.role; localStorage.setItem('playerRole', playerRole); document.querySelectorAll('.role-btn').forEach(btn => btn.classList.remove('active')); e.target.classList.add('active'); } });
-        banPalette.addEventListener('click', e => { if (e.target.classList.contains('hero-button')) { toggleBan(e.target.dataset.heroKey); } });
-        pickPalette.addEventListener('click', e => { if (e.target.classList.contains('hero-button')) { handleHeroPick(e.target.dataset.heroKey); } });
-        analysisButton.addEventListener('click', analyze);
-        importFile.addEventListener('change', handleImport);
-        exportButton.addEventListener('click', handleExport);
-        resetButton.addEventListener('click', handleReset);
-    }
-
-    // === 初期化処理の呼び出し（メインの実行フロー） ===
+    // === 初期化処理の呼び出し ===
     async function initialize() {
         try {
-            const [heroes, counters, maps] = await Promise.all([
-                fetch('heroes.json').then(res => res.json()),
-                fetch('counters.json').then(res => res.json()),
-                fetch('maps.json').then(res => res.json())
-            ]);
-            heroMaster = heroes;
-            defaultCounterData = counters;
-            mapData = maps;
-            
-            // 全ての関数が定義された後に呼び出す
+            const [h, c, m] = await Promise.all([fetch('heroes.json').then(r=>r.json()), fetch('counters.json').then(r=>r.json()), fetch('maps.json').then(r=>r.json())]);
+            heroMaster = h; defaultCounterData = c; mapData = m;
             loadData();
-            createHeroPalettes();
-            createMapSelector();
-            setupEventListeners();
-
-            // LocalStorageからロールを復元
+            createPaletteContent(banPalette); createPaletteContent(pickPalette); createMapSelector();
+            playerRoleSelector.addEventListener('click', handleRoleSelect);
+            banPalette.addEventListener('click', toggleBan);
+            pickPalette.addEventListener('click', handlePick);
+            yourTeamDisplay.addEventListener('click', handleDisplayClick);
+            enemyTeamDisplay.addEventListener('click', handleDisplayClick);
+            analysisButton.addEventListener('click', analyze);
+            importFile.addEventListener('change', handleImport);
+            exportButton.addEventListener('click', handleExport);
+            resetButton.addEventListener('click', handleReset);
             const savedRole = localStorage.getItem('playerRole');
-            if (savedRole) {
-                playerRole = savedRole;
-                const roleButton = playerRoleSelector.querySelector(`[data-role="${savedRole}"]`);
-                if (roleButton) roleButton.classList.add('active');
-            }
-            
-        } catch (error) {
-            console.error("初期化エラー:", error);
-            alert("設定ファイルの読み込み、または初期化に失敗しました。");
-        }
+            if (savedRole) { playerRole = savedRole; playerRoleSelector.querySelector(`[data-role="${savedRole}"]`)?.classList.add('active'); }
+        } catch (error) { console.error("初期化エラー:", error); alert("設定ファイルの読み込み、または初期化に失敗しました。"); }
     }
     
     initialize();

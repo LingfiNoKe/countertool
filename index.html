@@ -10,7 +10,7 @@
     <div class="container">
         <h1>ピックアップ提案ツール</h1>
         <p class="description">
-            あなたのロールを選択後、BANヒーローとチーム構成を入力し、分析したい対象をクリックしてください。
+            あなたのロールを選択後、BANヒーローとチーム構成を入力し、「分析実行」ボタンを押してください。
         </p>
         
         <div class="setup-panel">
@@ -30,13 +30,21 @@
             </div>
         </div>
 
+        <!-- ★★★ ここに欠落していたマップ選択パネルを追加しました ★★★ -->
+        <div class="map-selection">
+            <h3>2. マップ選択 (オプション)</h3>
+            <select id="map-selector">
+                <option value="">マップを選択しない</option>
+            </select>
+        </div>
+        
         <div class="hero-palette">
-            <h3>2. BANヒーロー (最大4体)</h3>
+            <h3>3. BANヒーロー (最大4体)</h3>
             <div class="role-section-container" id="ban-palette"></div>
         </div>
 
         <div class="team-composition">
-            <h3>3. チーム構成</h3>
+            <h3>4. チーム構成</h3>
             <div class="team-box" id="your-team-box">
                 <h2>味方チーム <span class="team-count" id="your-team-count">0/5</span></h2>
                 <div class="hero-display" id="your-team-display"></div>
@@ -48,13 +56,16 @@
         </div>
         
         <div class="hero-palette">
-             <h3>4. ヒーローをチームに追加</h3>
+             <h3>5. ヒーローをチームに追加</h3>
             <div class="role-section-container" id="pick-palette"></div>
         </div>
         
+        <div class="analysis-buttons">
+            <button id="analysis-button" class="analysis-btn">分析実行</button>
+        </div>
+
         <div id="result"></div>
 
-        <!-- 設定モーダルウィンドウ -->
         <div id="settings-modal" class="modal">
             <div class="modal-content">
                 <span class="close-button">&times;</span>
@@ -64,22 +75,22 @@
                     <input type="number" id="suggestion-count" min="1" max="5" value="3">
                 </div>
                 <div class="setting-item">
-                    <h3>ヒーロープール設定 (使えないヒーローにチェック)</h3>
+                    <h3>ヒーロープール設定 (使えないヒーローにチェックで無効化)</h3>
                     <div id="hero-pool-settings"></div>
                 </div>
                  <div class="setting-item">
                     <h3>データ管理</h3>
                     <div class="button-group">
-                        <label for="importFile" class="file-label">設定インポート</label>
+                        <label for="importFile" class="file-label">カウンター設定インポート</label>
                         <input type="file" id="importFile" accept=".json" style="display: none;">
-                        <button id="exportButton">設定エクスポート</button>
-                        <button id="resetButton">デフォルト設定に戻す</button>
+                        <button id="exportButton">カウンター設定エクスポート</button>
+                        <button id="resetButton">カウンター設定リセット</button>
                     </div>
                 </div>
-                <button id="save-settings-button">設定を保存</button>
+                <button id="save-settings-button">設定を保存して閉じる</button>
             </div>
         </div>
     </div>
-    <script src="script.js?v=final_complete"></script>
+    <script src="script.js?v=final_complete_v2"></script>
 </body>
 </html>

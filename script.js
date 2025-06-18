@@ -85,15 +85,60 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
     }
 
+    /**
+     * 【修正箇所】
+     * ヒーロー選択パレットを生成する関数。
+     * heroes.jsonからロール情報を動的に読み取り、セクションを生成するよう変更。
+     */
     function populatePalettes() {
         heroPalette.innerHTML = '';
         banPalette.innerHTML = '';
-        const sortedHeroes = [...heroesData].sort((a, b) => a.name.localeCompare(b.name));
-        for (const hero of sortedHeroes) {
-            const cardHTML = `<div class="hero-card" data-hero-id="${hero.id}">${hero.name}</div>`;
-            heroPalette.innerHTML += cardHTML;
-            banPalette.innerHTML += cardHTML;
-        }
+
+        // 1. heroes.jsonからロールのリストを重複なく取得する
+        const allRoles = heroesData.map(hero => hero.role);
+        const uniqueRoles = [...new Set(allRoles)];
+
+        // 2. 表示順を定義（オーバーウォッチの慣例に合わせる）
+        // この配列に含まれない新しいロールは、配列の最後に追加される
+        const roleOrder = ['tank', 'damage', 'support'];
+        uniqueRoles.sort((a, b) => {
+            const indexA = roleOrder.indexOf(a);
+            const indexB = roleOrder.indexOf(b);
+            if (indexA > -1 && indexB > -1) return indexA - indexB;
+            if (indexA > -1) return -1;
+            if (indexB > -1) return 1;
+            return a.localeCompare(b); // roleOrderにないロールは末尾でアルファベット順に
+        });
+        
+        // 3. ロールの日本語名を定義
+        const roleNames = {
+            tank: 'タンク',
+            damage: 'ダメージ',
+            support: 'サポート'
+        };
+
+        // 4. 動的に取得したロールごとに処理
+        uniqueRoles.forEach(role => {
+            // パレットに見出しを追加
+            const headerName = roleNames[role] || role; // 未定義のロールは英語名をそのまま使用
+            const heroHeader = `<h3 class="role-header">${headerName}</h3>`;
+            heroPalette.innerHTML += heroHeader;
+            
+            const banHeader = `<h3 class="role-header">${headerName}</h3>`;
+            banPalette.innerHTML += banHeader;
+
+            // そのロールに属するヒーローを名前（日本語）のアルファベット順でソート
+            const heroesInRole = heroesData
+                .filter(hero => hero.role === role)
+                .sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+
+            // ソートされたヒーローをカードとしてパレットに追加
+            heroesInRole.forEach(hero => {
+                const cardHTML = `<div class="hero-card" data-hero-id="${hero.id}">${hero.name}</div>`;
+                heroPalette.innerHTML += cardHTML;
+                banPalette.innerHTML += cardHTML;
+            });
+        });
     }
 
     function populateMapSelector() {
@@ -354,7 +399,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function clearAllSuggestions() {
         document.querySelectorAll('.suggestion').forEach(el => {
-            el.textContent = '';
+            el.innerHTML = ''; // h4タグも含めてクリア
             el.classList.remove('show');
         });
     }
@@ -364,7 +409,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!state.activeAnalysis) return;
 
         const { mode, target } = state.activeAnalysis;
-        let scores, suggestions, suggestionSlot;
+        let scores, suggestions;
 
         // 1. 全ヒーローのスコアを計算
         scores = calculateAllHeroScores(mode, target);
@@ -375,55 +420,54 @@ document.addEventListener('DOMContentLoaded', () => {
         // 3. 提案を表示
         clearAllSuggestions();
         
-        // 提案を表示するスロットを決定
-        if (mode === 'Self-Analysis' || mode === 'Ally-Support' || mode === 'Threat-Elimination') {
-            // 自分自身を入れ替える提案なので、自分のスロットに表示
-             suggestionSlot = document.querySelector(`.hero-slot-wrapper[data-team="ally"][data-index="${state.myHeroSlotIndex}"]`);
-        } else if (mode === 'Strategic-Optimization') {
-            // 全体分析は特定のトリガーがないので、とりあえず自分のスロットに表示
-            suggestionSlot = document.querySelector(`.hero-slot-wrapper[data-team="ally"][data-index="${state.myHeroSlotIndex}"]`);
-        }
+        // 提案は常に自分のスロットに表示する
+        const mySlotWrapper = document.querySelector(`.hero-slot-wrapper[data-team="ally"][data-index="${state.myHeroSlotIndex}"]`);
         
-        if (suggestionSlot) {
-            displaySuggestions(suggestionSlot, suggestions);
+        if (mySlotWrapper) {
+            displaySuggestions(mySlotWrapper, suggestions);
         }
     }
 
     function calculateAllHeroScores(mode, target) {
         const scores = [];
-        const pickedHeroes = [...state.allyTeam, ...state.enemyTeam].filter(Boolean);
+        // 提案候補から自分自身を除外する（ヒーロー変更が前提のため）
+        const myCurrentHeroId = state.allyTeam[state.myHeroSlotIndex];
+        const pickedHeroes = [...state.allyTeam, ...state.enemyTeam].filter(h => h && h !== myCurrentHeroId);
 
         for (const candidateHero of heroesData) {
-            // 提案候補ヒーローがBAN/ピック済みなら除外
-            if (state.bannedHeroes.includes(candidateHero.id) || pickedHeroes.includes(candidateHero.id)) {
+            // 提案候補ヒーローがBAN/ピック済み/自分自身なら除外
+            if (state.bannedHeroes.includes(candidateHero.id) || pickedHeroes.includes(candidateHero.id) || candidateHero.id === myCurrentHeroId) {
                 continue;
             }
 
             // --- 各スコアの計算 ---
-            const myTeam = state.allyTeam.filter(h => h && h !== state.allyTeam[state.myHeroSlotIndex]); // 自分以外の味方
+            const myTeam = state.allyTeam.filter(h => h && h !== myCurrentHeroId); // 自分以外の味方
             const enemyTeam = state.enemyTeam.filter(Boolean);
 
             // 1. 対ヒーロースコア (分析モードにより変動)
             let counterScore = 0;
             switch(mode) {
-                case 'Self-Analysis': { // 自分をカウンターしている敵へのカウンター値合計
+                case 'Self-Analysis': {
                     const myHeroId = state.allyTeam[target.index];
+                    if (!myHeroId) break;
                     const threats = enemyTeam.filter(enemyId => getCounterScore(myHeroId, enemyId) < 0);
                     counterScore = threats.reduce((sum, threatId) => sum + getCounterScore(candidateHero.id, threatId), 0);
                     break;
                 }
-                case 'Ally-Support': { // 味方をカウンターしている敵へのカウンター値合計
+                case 'Ally-Support': {
                     const allyHeroId = state.allyTeam[target.index];
+                    if (!allyHeroId) break;
                     const threats = enemyTeam.filter(enemyId => getCounterScore(allyHeroId, enemyId) < 0);
                     counterScore = threats.reduce((sum, threatId) => sum + getCounterScore(candidateHero.id, threatId), 0);
                     break;
                 }
-                case 'Threat-Elimination': { // 特定の敵1体へのカウンター値
+                case 'Threat-Elimination': {
                     const enemyHeroId = state.enemyTeam[target.index];
+                    if (!enemyHeroId) break;
                     counterScore = getCounterScore(candidateHero.id, enemyHeroId);
                     break;
                 }
-                case 'Strategic-Optimization': { // 敵5人全員へのカウンター値合計
+                case 'Strategic-Optimization': {
                     counterScore = enemyTeam.reduce((sum, enemyId) => sum + getCounterScore(candidateHero.id, enemyId), 0);
                     break;
                 }
@@ -435,16 +479,13 @@ document.addEventListener('DOMContentLoaded', () => {
             // 3. 構成シナジースコア (自分以外の味方とのシナジー)
             const synergyScore = myTeam.reduce((sum, allyId) => sum + getSynergyScore(candidateHero.id, allyId), 0);
             
-            // 最終的な「リターン」スコア
             const returnScore = counterScore + mapScore + synergyScore;
 
             // --- リスクと特化度の計算 ---
             const counterScoresVsEnemies = enemyTeam.map(enemyId => getCounterScore(candidateHero.id, enemyId));
 
-            // リスク: 敵からの不利の合計
             const riskScore = counterScoresVsEnemies.filter(s => s < 0).reduce((sum, s) => sum + Math.abs(s), 0);
             
-            // 特化度: スコアのばらつき (標準偏差)
             const specializationScore = calculateStandardDeviation(counterScoresVsEnemies);
             
             scores.push({
@@ -460,11 +501,9 @@ document.addEventListener('DOMContentLoaded', () => {
     function generateSuggestions(scores) {
         if (scores.length === 0) return { highRisk: [], lowRisk: [] };
 
-        // 1. 上位選抜: リターンスコアでソートし、上位6体を候補とする
         const topCandidates = scores.sort((a, b) => b.return - a.return).slice(0, 6);
         if (topCandidates.length === 0) return { highRisk: [], lowRisk: [] };
 
-        // 2. 詳細評価と相対的分類
         const riskMedian = calculateMedian(topCandidates.map(c => c.risk));
         const specMedian = calculateMedian(topCandidates.map(c => c.specialization));
         
@@ -480,7 +519,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
         
-        // 各カテゴリをリターンスコアでソート
         highRisk.sort((a,b) => b.return - a.return);
         lowRisk.sort((a,b) => b.return - a.return);
 
@@ -494,23 +532,24 @@ document.addEventListener('DOMContentLoaded', () => {
         const highRiskArea = slotWrapper.querySelector('.suggestion.high-risk');
         const lowRiskArea = slotWrapper.querySelector('.suggestion.low-risk');
         
-        highRiskArea.innerHTML = '<h4>【ハイリスク案】</h4>';
-        lowRiskArea.innerHTML = '<h4>【ローリスク案】</h4>';
-
+        let highRiskHTML = '<h4>【ハイリスク案】</h4>';
         highRisk.slice(0, count).forEach(s => {
             const heroName = getHeroName(s.heroId);
-            const isGreyedOut = state.settings.heroPool.includes(s.heroId);
-            highRiskArea.innerHTML += `<div class="${isGreyedOut ? 'greyed-out' : ''}">${heroName}</div>`;
+            const isGreyedOut = state.settings.heroPool.includes(s.heroId) ? 'greyed-out' : '';
+            highRiskHTML += `<div class="${isGreyedOut}">${heroName}</div>`;
         });
+        highRiskArea.innerHTML = highRiskHTML;
 
+        let lowRiskHTML = '<h4>【ローリスク案】</h4>';
         lowRisk.slice(0, count).forEach(s => {
             const heroName = getHeroName(s.heroId);
-            const isGreyedOut = state.settings.heroPool.includes(s.heroId);
-            lowRiskArea.innerHTML += `<div class="${isGreyedOut ? 'greyed-out' : ''}">${heroName}</div>`;
+            const isGreyedOut = state.settings.heroPool.includes(s.heroId) ? 'greyed-out' : '';
+            lowRiskHTML += `<div class="${isGreyedOut}">${heroName}</div>`;
         });
+        lowRiskArea.innerHTML = lowRiskHTML;
         
-        highRiskArea.classList.add('show');
-        lowRiskArea.classList.add('show');
+        if (highRisk.length > 0) highRiskArea.classList.add('show');
+        if (lowRisk.length > 0) lowRiskArea.classList.add('show');
     }
 
     // --- データアクセス＆計算ヘルパー ---
@@ -524,7 +563,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return countersData[heroA][heroB];
         }
         if (countersData[heroB] && countersData[heroB][heroA] !== undefined) {
-            return -countersData[heroB][heroA]; // 符号反転
+            return -countersData[heroB][heroA];
         }
         return 0;
     }
@@ -534,7 +573,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return synergyData[heroA][heroB];
         }
         if (synergyData[heroB] && synergyData[heroB][heroA] !== undefined) {
-            return synergyData[heroB][heroA]; // 符号はそのまま
+            return synergyData[heroB][heroA];
         }
         return 0;
     }
@@ -622,7 +661,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
         reader.readAsText(file);
-        event.target.value = ''; // 同じファイルを再度選択できるように
+        event.target.value = '';
     }
 
     // --- アプリケーション起動 ---

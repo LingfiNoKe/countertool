@@ -30,8 +30,9 @@ body {
     display: flex;
     flex-direction: column;
 }
-.team-column { flex: 1; min-width: 250px; }
-#central-panel { flex: 2; min-width: 400px; }
+.team-column { flex: 1; min-width: 280px; }
+/* 【変更】中央パネルの幅を少し狭める */
+#central-panel { flex: 1.8; min-width: 400px; } 
 .team-header { padding: 10px 15px; border-bottom: 1px solid var(--border-color); text-align: center; }
 h2 { margin: 0; }
 .team-role-icons { display: flex; justify-content: center; gap: 8px; margin-top: 8px; min-height: 20px; }
@@ -42,24 +43,29 @@ h2 { margin: 0; }
 .team-slots { flex-grow: 1; display: flex; flex-direction: column; justify-content: space-around; padding: 10px; }
 .hero-slot-wrapper { display: flex; align-items: center; margin: 5px 0; }
 #enemy-team-slots .hero-slot-wrapper { flex-direction: row-reverse; }
-.hero-slot { flex-grow: 1; height: 60px; border: 2px dashed var(--border-color); border-radius: 5px; display: flex; justify-content: center; align-items: center; cursor: pointer; transition: all 0.2s ease; font-size: 1.1em; font-weight: bold; }
+.hero-slot { flex-grow: 1; height: 60px; border: 2px dashed var(--border-color); border-radius: 5px; display: flex; justify-content: center; align-items: center; cursor: pointer; transition: all 0.2s ease; font-size: 1.1em; font-weight: bold; position: relative; }
 .hero-slot.ally { border-color: var(--ally-color); }
 .hero-slot.enemy { border-color: var(--enemy-color); }
 .hero-slot.selected { border-style: solid; color: var(--text-color); }
 .hero-slot.ally.selected { background-color: rgba(93, 156, 236, 0.2); }
 .hero-slot.enemy.selected { background-color: rgba(229, 115, 115, 0.2); }
 .hero-slot.active-selection { border-color: var(--highlight-color); box-shadow: 0 0 10px var(--highlight-color); }
-.hero-slot.is-mine::after { content: 'YOU'; position: absolute; top: 2px; right: 5px; font-size: 0.6em; color: var(--highlight-color); font-weight: bold; }
-.suggestion-area { width: 120px; display: flex; flex-direction: column; gap: 4px; padding: 0 10px; font-size: 0.9em; }
+
+/* 【変更】YOU表示の位置を調整 */
+.hero-slot.is-mine::after { content: 'YOU'; position: absolute; top: 4px; right: 5px; font-size: 0.7em; color: var(--highlight-color); font-weight: bold; background-color: rgba(44, 49, 58, 0.7); padding: 1px 4px; border-radius: 3px; }
+
+/* 【変更】提案エリアのスタイル調整 */
+.suggestion-area { width: 140px; display: flex; flex-direction: column; gap: 4px; padding: 0 10px; font-size: 0.9em; }
 .suggestion { padding: 4px 8px; border-radius: 4px; background-color: var(--suggestion-bg); text-align: center; visibility: hidden; }
-.suggestion h4 { margin: 0 0 4px 0; font-size: 0.8em; color: var(--highlight-color); font-weight: normal; }
-.suggestion div { padding: 2px 0; }
+.suggestion h4 { margin: 0 0 4px 0; font-size: 0.8em; color: var(--highlight-color); font-weight: normal; border-bottom: 1px solid var(--border-color); padding-bottom: 2px; }
+.suggestion div { padding: 1px 0; line-height: 1.4; word-break: break-all; } /* 行間と改行を調整 */
 .suggestion div.greyed-out { opacity: 0.5; text-decoration: line-through; }
 .suggestion.show { visibility: visible; }
 .suggestion.high-risk { border-left: 3px solid var(--high-risk-color); }
 #enemy-team-slots .suggestion.high-risk, #global-suggestion-area .suggestion.high-risk { border-left: none; border-right: 3px solid var(--high-risk-color); }
 .suggestion.low-risk { border-left: 3px solid var(--low-risk-color); }
 #enemy-team-slots .suggestion.low-risk, #global-suggestion-area .suggestion.low-risk { border-left: none; border-right: 3px solid var(--low-risk-color); }
+
 #tabs { display: flex; border-bottom: 1px solid var(--border-color); }
 .tab-link { flex-grow: 1; padding: 12px; cursor: pointer; background-color: transparent; border: none; color: var(--text-color); font-size: 1.1em; border-bottom: 3px solid transparent; }
 .tab-link.active { border-bottom-color: var(--highlight-color); background-color: rgba(255, 193, 7, 0.1); }
@@ -96,7 +102,6 @@ input[type="number"] { width: 60px; }
 .control-btn:hover { background-color: #4a5260; }
 .analysis-btn { background-color: var(--ally-color); font-weight: bold; font-size: 1.2em; padding: 12px 25px; }
 .analysis-btn:hover { background-color: #4889d6; }
-/* 【変更】全体分析エリアのレイアウト調整 */
 #global-analysis-container { justify-content: flex-end; padding-right: 15px; }
 #global-analysis-btn { flex-shrink: 0; }
 #global-suggestion-area { padding-left: 15px; }

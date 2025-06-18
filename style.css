@@ -148,6 +148,21 @@ h2 { margin: 0; }
     visibility: hidden;
 }
 
+.suggestion h4 {
+    margin: 0 0 4px 0;
+    font-size: 0.8em;
+    color: var(--highlight-color);
+    font-weight: normal;
+}
+.suggestion div {
+    padding: 2px 0;
+}
+.suggestion div.greyed-out {
+    opacity: 0.5;
+    text-decoration: line-through;
+}
+
+
 .suggestion.show { visibility: visible; }
 .suggestion.high-risk { border-left: 3px solid var(--high-risk-color); }
 #enemy-team-slots .suggestion.high-risk { border-left: none; border-right: 3px solid var(--high-risk-color); }
@@ -178,10 +193,24 @@ h2 { margin: 0; }
 .tab-pane.active { display: block; }
 #tab-content { padding: 15px; overflow-y: auto; flex-grow: 1; }
 
-#hero-palette, #ban-palette, #hero-pool-checklist {
+#hero-palette, #ban-palette {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
     gap: 8px;
+}
+
+/* 【追記】ロール見出しのスタイル */
+.role-header {
+    grid-column: 1 / -1; /* グリッドレイアウトの行全体を占有 */
+    margin: 15px 0 5px 0;
+    padding-bottom: 5px;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--highlight-color);
+    font-size: 1.1em;
+}
+/* 最初の見出しの上マージンをなくす */
+.role-header:first-of-type {
+    margin-top: 0;
 }
 
 .hero-card {

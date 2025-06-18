@@ -1,23 +1,119 @@
 {
-    "genji": {
-        "ana": 1.5,
-        "winston": -2,
-        "zarya": -1.5,
-        "cassidy": -1
+    "dva": {
+        "zarya": -2,
+        "symmetra": -1.5,
+        "roadhog": -1,
+        "winston": 1
     },
-    "reaper": {
-        "winston": 2,
-        "reinhardt": 1
+    "doomfist": {
+        "sombra": -2,
+        "orisa": -1.5,
+        "pharah": -1,
+        "cassidy": -1,
+        "zenyatta": 1
     },
-    "pharah": {
-        "reinhardt": 1.5,
-        "reaper": 1,
-        "cassidy": -2
+    "junker-queen": {
+        "ana": -2,
+        "ashe": -1,
+        "widowmaker": -1,
+        "reaper": 1
+    },
+    "ramattra": {
+        "pharah": -1.5,
+        "sombra": -1,
+        "ana": -1
+    },
+    "reinhardt": {
+        "bastion": -2,
+        "pharah": -1.5,
+        "sombra": -1.5,
+        "junkrat": -1
     },
     "winston": {
-        "pharah": -1
+        "reaper": -2,
+        "bastion": -2,
+        "roadhog": -1.5,
+        "genji": 1.5,
+        "widowmaker": 1
+    },
+    "wrecking-ball": {
+        "sombra": -2,
+        "mei": -1.5,
+        "ana": -1.5,
+        "brigitte": -1
+    },
+    "zarya": {
+        "pharah": -1.5,
+        "echo": -1.5,
+        "reinhardt": 1
+    },
+    "genji": {
+        "winston": -2,
+        "moira": -2,
+        "zarya": -1.5,
+        "symmetra": -1.5,
+        "ana": 1.5,
+        "zenyatta": 1.5
+    },
+    "pharah": {
+        "widowmaker": -2,
+        "ashe": -2,
+        "cassidy": -2,
+        "soldier-76": -1.5,
+        "dva": -1.5,
+        "junkrat": 1.5,
+        "reaper": 1
+    },
+    "reaper": {
+        "pharah": -1.5,
+        "echo": -1.5,
+        "junkrat": -1,
+        "winston": 2,
+        "roadhog": 1
+    },
+    "sombra": {
+        "kiriko": -1,
+        "hanzo": 1,
+        "widowmaker": 1
+    },
+    "tracer": {
+        "torbjorn": -2,
+        "cassidy": -1.5,
+        "winston": -1
+    },
+    "widowmaker": {
+        "winston": -2,
+        "genji": -2,
+        "dva": -1.5,
+        "sombra": -1,
+        "pharah": 1.5,
+        "bastion": 1.5
     },
     "ana": {
-        "reaper": -1
+        "genji": -2,
+        "sombra": -2,
+        "tracer": -1.5,
+        "dva": -1.5
+    },
+    "brigitte": {
+        "pharah": -2,
+        "junkrat": -1.5,
+        "tracer": 1.5,
+        "genji": 1
+    },
+    "lucio": {
+        "mei": -1,
+        "pharah": -1,
+        "symmetra": -1
+    },
+    "mercy": {
+        "sombra": -1.5,
+        "widowmaker": -1.5,
+        "cassidy": -1.5
+    },
+    "zenyatta": {
+        "sombra": -2,
+        "widowmaker": -2,
+        "tracer": -1.5
     }
 }

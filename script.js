@@ -136,21 +136,17 @@ document.addEventListener('DOMContentLoaded', () => {
     
     function runAllAnalyses() {
         clearAllSuggestions();
-        // モード1 & 2: 味方スロットごとの分析
         for (let i = 0; i < 5; i++) {
-            const wrapper = document.querySelector(`.hero-slot-wrapper[data-team="ally"][data-index="${i}"]`);
-            if (i === state.myHeroSlotIndex) {
-                if(state.allyTeam[i]) displaySuggestions(wrapper, runAnalysis('Self-Analysis', {team: 'ally', index: i}));
-            } else {
-                if(state.allyTeam[i]) displaySuggestions(wrapper, runAnalysis('Ally-Support', {team: 'ally', index: i}));
+            const allyWrapper = document.querySelector(`.hero-slot-wrapper[data-team="ally"][data-index="${i}"]`);
+            if(state.allyTeam[i]) {
+                const mode = i === state.myHeroSlotIndex ? 'Self-Analysis' : 'Ally-Support';
+                displaySuggestions(allyWrapper, runAnalysis(mode, {team: 'ally', index: i}));
+            }
+            const enemyWrapper = document.querySelector(`.hero-slot-wrapper[data-team="enemy"][data-index="${i}"]`);
+            if(state.enemyTeam[i]) {
+                displaySuggestions(enemyWrapper, runAnalysis('Threat-Elimination', {team: 'enemy', index: i}));
             }
         }
-        // モード3: 敵スロットごとの分析
-        for (let i = 0; i < 5; i++) {
-            const wrapper = document.querySelector(`.hero-slot-wrapper[data-team="enemy"][data-index="${i}"]`);
-            if(state.enemyTeam[i]) displaySuggestions(wrapper, runAnalysis('Threat-Elimination', {team: 'enemy', index: i}));
-        }
-        // モード4: 全体分析
         displaySuggestions(elements.globalSuggestionArea, runAnalysis('Strategic-Optimization', null));
     }
 
@@ -169,24 +165,20 @@ document.addEventListener('DOMContentLoaded', () => {
         const myTeamForSynergy = state.allyTeam.filter(h => h && h !== (myCurrentHero ? myCurrentHero.id : null));
 
         for (const candidateHero of heroesData) {
-            if ( (targetRole && candidateHero.role !== targetRole) ||
-                 state.bannedHeroes.includes(candidateHero.id) ||
-                 (myCurrentHero && candidateHero.id === myCurrentHero.id) ||
-                 (!state.settings.allowTeamDuplicates && state.allyTeam.includes(candidateHero.id)) ) {
+            if ( (targetRole && candidateHero.role !== targetRole) || state.bannedHeroes.includes(candidateHero.id) || (myCurrentHero && candidateHero.id === myCurrentHero.id) || (!state.settings.allowTeamDuplicates && state.allyTeam.includes(candidateHero.id)) ) {
                 continue;
             }
             let counterScore = 0;
+            const targetHeroId = target ? getHeroIdBySlot(target) : null;
+
             switch(mode) {
                 case 'Self-Analysis':
-                    const threatsToMe = enemyTeam.filter(e => getCounterScore(target.id, e) < 0);
-                    counterScore = threatsToMe.reduce((sum, t) => sum + getCounterScore(candidateHero.id, t), 0);
-                    break;
                 case 'Ally-Support':
-                    const threatsToAlly = enemyTeam.filter(e => getCounterScore(getHeroIdBySlot(target), e) < 0);
-                    counterScore = threatsToAlly.reduce((sum, t) => sum + getCounterScore(candidateHero.id, t), 0);
+                    const threats = enemyTeam.filter(e => getCounterScore(targetHeroId, e) < 0);
+                    counterScore = threats.reduce((sum, t) => sum + getCounterScore(candidateHero.id, t), 0);
                     break;
                 case 'Threat-Elimination':
-                    counterScore = getCounterScore(candidateHero.id, getHeroIdBySlot(target));
+                    counterScore = getCounterScore(candidateHero.id, targetHeroId);
                     break;
                 case 'Strategic-Optimization':
                     counterScore = enemyTeam.reduce((sum, e) => sum + getCounterScore(candidateHero.id, e), 0);
@@ -217,28 +209,52 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- レンダリング ---
     function renderAll() {
         renderSlots();
-        renderPalettes();
         renderBans();
         renderTeamRoleIcons();
-        renderActiveSelection();
         renderSettings();
+        if(state.activeSelection) { // アクティブな選択がある時だけパレットを更新
+             renderPalettes();
+             renderActiveSelection();
+        }
     }
     function renderSlots() { document.querySelectorAll('.hero-slot').forEach(slot => { const { team, index } = slot.dataset; const heroId = state[`${team}Team`][index]; if(heroId) { slot.textContent = getHeroById(heroId).name; slot.classList.add('selected'); } else { slot.textContent = `スロット ${parseInt(index)+1}`; slot.classList.remove('selected'); }}); }
     function renderActiveSelection() { document.querySelectorAll('.hero-slot.active-selection').forEach(s => s.classList.remove('active-selection')); if (state.activeSelection) { const { team, index } = state.activeSelection; document.querySelector(`.hero-slot[data-team="${team}"][data-index="${index}"]`).classList.add('active-selection'); }}
+    
+    /**
+     * 【変更】ヒーローパレットのロック条件を修正。
+     * ロール上限に達していても、そのロールのヒーローと入れ替える場合はロックしない。
+     */
     function renderPalettes() {
         if (!state.activeSelection) return;
-        const { team } = state.activeSelection;
+        const { team, index } = state.activeSelection;
         const targetTeamState = team === 'ally' ? state.allyTeam : state.enemyTeam;
         const pickedInTeam = state.settings.allowTeamDuplicates ? [] : targetTeamState.filter(Boolean);
         const roleCounts = countRoles(targetTeamState);
+        const selectedSlotHeroId = targetTeamState[index];
+        const selectedSlotHero = selectedSlotHeroId ? getHeroById(selectedSlotHeroId) : null;
+
         document.querySelectorAll('#hero-palette .hero-card, #ban-palette .hero-card').forEach(card => {
             const hero = getHeroById(card.dataset.heroId);
             card.className = 'hero-card'; // Reset classes
             if (state.bannedHeroes.includes(hero.id)) card.classList.add('banned');
             if (pickedInTeam.includes(hero.id)) card.classList.add('picked');
-            if ((roleCounts[hero.role] || 0) >= (state.settings.roleLimits[hero.role] ?? 5)) card.classList.add('role-locked');
+            
+            const limit = state.settings.roleLimits[hero.role] ?? 5;
+            let isLocked = (roleCounts[hero.role] || 0) >= limit;
+            
+            // ロックの例外条件: 選択中のスロットのヒーローのロールと同じなら、ロックを解除
+            if (isLocked && selectedSlotHero && hero.role === selectedSlotHero.role) {
+                isLocked = false;
+            }
+            // 空のスロットを選択中で、ロールが埋まっている場合はロック
+            if (!selectedSlotHero && isLocked){
+                isLocked = true;
+            }
+
+            if (isLocked) card.classList.add('role-locked');
         });
     }
+
     function renderBans() { elements.bannedListContainer.innerHTML = state.bannedHeroes.map(id => `<div class="banned-hero-item" data-hero-id="${id}">${getHeroById(id).name}</div>`).join(''); }
     function renderTeamRoleIcons() { const container = document.querySelector('#ally-team-column .team-role-icons'); container.innerHTML = ''; getUniqueRoles().forEach(role => { for(let i=0; i<(state.settings.roleLimits[role]??0); i++) container.innerHTML += `<span class="role-icon ${role}"></span>`; }); }
     function renderSettings() { elements.suggestionCountSelect.value = state.settings.suggestionCount; elements.allowDuplicatesCheckbox.checked = state.settings.allowTeamDuplicates; document.querySelectorAll('#hero-pool-checklist input').forEach(cb => cb.checked = state.settings.heroPool.includes(cb.dataset.heroId)); getUniqueRoles().forEach(role => { const input = document.getElementById(`limit-${role}`); if (input) input.value = state.settings.roleLimits[role] ?? 5; }); }

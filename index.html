@@ -3,55 +3,103 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Overwatch ピックアップ提案ツール</title>
+    <title>Overwatch Hero Pick Analyzer</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="container">
-        <h1>ピックアップ提案ツール</h1>
-        <div class="battle-board">
-            <div class="team-panel your-team">
+    <div id="battle-board">
+        <!-- 左カラム: 味方チーム -->
+        <div class="team-column" id="ally-team-column">
+            <div class="team-header">
                 <h2>味方チーム</h2>
-                <!-- 味方5人分のスロット -->
-                <div class="hero-slot" data-team="your" data-index="0"></div>
-                <div class="hero-slot" data-team="your" data-index="1"></div>
-                <div class="hero-slot" data-team="your" data-index="2"></div>
-                <div class="hero-slot" data-team="your" data-index="3"></div>
-                <div class="hero-slot" data-team="your" data-index="4"></div>
-            </div>
-
-            <div class="center-panel">
-                <div class="role-selector-panel">
-                    <h3>あなたのロール</h3>
-                    <div class="button-group" id="player-role-selector">
-                        <button class="role-btn" data-role="Tank">タンク</button>
-                        <button class="role-btn" data-role="Damage">ダメージ</button>
-                        <button class="role-btn" data-role="Support">サポート</button>
-                    </div>
-                </div>
-                <div class="hero-palette">
-                    <h3>ヒーロー選択</h3>
-                    <div class="role-section-container" id="pick-palette"></div>
-                </div>
-                 <div class="control-panel">
-                    <h3>設定</h3>
-                    <button id="settings-button">⚙️ 詳細設定</button>
+                <div class="team-role-icons">
+                    <span class="role-icon tank"></span>
+                    <span class="role-icon damage"></span>
+                    <span class="role-icon damage"></span>
+                    <span class="role-icon support"></span>
+                    <span class="role-icon support"></span>
                 </div>
             </div>
-
-            <div class="team-panel enemy-team">
-                <h2>敵チーム</h2>
-                <!-- 敵5人分のスロット -->
-                <div class="hero-slot" data-team="enemy" data-index="0"></div>
-                <div class="hero-slot" data-team="enemy" data-index="1"></div>
-                <div class="hero-slot" data-team="enemy" data-index="2"></div>
-                <div class="hero-slot" data-team="enemy" data-index="3"></div>
-                <div class="hero-slot" data-team="enemy" data-index="4"></div>
+            <div id="ally-team-slots" class="team-slots">
+                <!-- JSでヒーロースロットを5つ生成 -->
+            </div>
+            <div id="reset-controls" class="global-controls bottom-controls">
+                <button id="reset-all-btn" class="control-btn">全リセット</button>
+                <button id="reset-heroes-btn" class="control-btn">ヒーローリセット</button>
+                <button id="reset-bans-btn" class="control-btn">BANリセット</button>
             </div>
         </div>
-        
-        <!-- 設定モーダルウィンドウ (内容は変更なし) -->
+
+        <!-- 中央カラム: 操作パネル -->
+        <div id="central-panel">
+            <div id="tabs">
+                <button class="tab-link active" data-tab="heroes">キャラ</button>
+                <button class="tab-link" data-tab="bans">BAN</button>
+                <button class="tab-link" data-tab="settings">設定</button>
+            </div>
+            <div id="tab-content">
+                <div id="heroes-tab" class="tab-pane active">
+                    <div id="hero-palette">
+                        <!-- JSでヒーロー選択パネルを生成 -->
+                    </div>
+                </div>
+                <div id="bans-tab" class="tab-pane">
+                    <div id="ban-palette">
+                        <!-- JSでBANヒーロー選択パネルを生成 -->
+                    </div>
+                     <div id="banned-heroes-display">
+                        <h3>BAN指定中のヒーロー</h3>
+                        <div id="banned-list"></div>
+                    </div>
+                </div>
+                <div id="settings-tab" class="tab-pane">
+                    <h3>パーソナライズ設定</h3>
+                    <div class="setting-item">
+                        <label for="suggestion-count">提案表示数 (各カテゴリ):</label>
+                        <select id="suggestion-count">
+                            <option value="1">1</option>
+                            <option value="2" selected>2</option>
+                            <option value="3">3</option>
+                        </select>
+                    </div>
+                    <div class="setting-item">
+                        <label>ヒーロープール (使用しないヒーロー):</label>
+                        <div id="hero-pool-checklist">
+                            <!-- JSでヒーロープールチェックリストを生成 -->
+                        </div>
+                    </div>
+                    <div class="setting-item data-management">
+                        <h4>データ管理</h4>
+                        <p>現在の設定をインポート/エクスポートします。</p>
+                        <button id="export-data-btn" class="control-btn">設定をエクスポート</button>
+                        <label for="import-data-input" class="control-btn">設定をインポート</label>
+                        <input type="file" id="import-data-input" accept=".json" style="display:none;">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右カラム: 敵チーム -->
+        <div class="team-column" id="enemy-team-column">
+            <div class="team-header">
+                <h2>敵チーム</h2>
+                 <div id="map-selector-container" class="global-controls top-controls">
+                    <label for="map-selector">マップ:</label>
+                    <select id="map-selector">
+                        <option value="none">マップ未選択</option>
+                        <!-- JSでマップを生成 -->
+                    </select>
+                </div>
+            </div>
+            <div id="enemy-team-slots" class="team-slots">
+                <!-- JSでヒーロースロットを5つ生成 -->
+            </div>
+            <div id="global-analysis-container" class="global-controls bottom-controls">
+                <button id="global-analysis-btn" class="control-btn analysis-btn">全体</button>
+            </div>
+        </div>
     </div>
-    <script src="script.js?v=true_final"></script>
+
+    <script src="script.js"></script>
 </body>
 </html>

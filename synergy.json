@@ -1,0 +1,17 @@
+{
+    "ana": {
+        "genji": 2,
+        "reinhardt": 1.5,
+        "winston": 1
+    },
+    "mercy": {
+        "pharah": 2
+    },
+    "lucio": {
+        "reinhardt": 1.5,
+        "reaper": 1
+    },
+    "zarya": {
+        "zarya": -1.0 
+    }
+}

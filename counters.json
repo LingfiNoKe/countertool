@@ -1,3 +1,23 @@
 {
-  "reaper vs winston": 2.0, "soldier76 vs pharah": 2.0, "genji vs zarya": -2.0, "reinhardt vs zarya": 0.0, "reinhardt vs genji": 0.5, "ana vs genji": -1.0, "bastion vs junkrat": -1.5, "pharah vs junkrat": 2.0, "widowmaker vs pharah": 1.5, "winston vs widowmaker": 2.0
+    "genji": {
+        "ana": 1.5,
+        "winston": -2,
+        "zarya": -1.5,
+        "cassidy": -1
+    },
+    "reaper": {
+        "winston": 2,
+        "reinhardt": 1
+    },
+    "pharah": {
+        "reinhardt": 1.5,
+        "reaper": 1,
+        "cassidy": -2
+    },
+    "winston": {
+        "pharah": -1
+    },
+    "ana": {
+        "reaper": -1
+    }
 }

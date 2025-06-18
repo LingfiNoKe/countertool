@@ -1,227 +1,630 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // === DOM要素の取得 ===
-    const playerRoleSelector = document.getElementById('player-role-selector');
+    // --- グローバル変数と状態管理 ---
+    let heroesData = [];
+    let countersData = {};
+    let mapsData = {};
+    let synergyData = {};
+
+    let state = {
+        allyTeam: Array(5).fill(null),
+        enemyTeam: Array(5).fill(null),
+        bannedHeroes: [],
+        currentMap: 'none',
+        myHeroSlotIndex: 0, // 味方チームの0番目をデフォルトで「自分」とする
+        activeSelection: null, // { team: 'ally'/'enemy', index: number }
+        activeAnalysis: null, // { mode: string, target: any }
+        settings: {
+            suggestionCount: 2,
+            heroPool: []
+        }
+    };
+
+    // --- DOM要素のキャッシュ ---
+    const allySlotsContainer = document.getElementById('ally-team-slots');
+    const enemySlotsContainer = document.getElementById('enemy-team-slots');
+    const heroPalette = document.getElementById('hero-palette');
     const banPalette = document.getElementById('ban-palette');
-    const pickPalette = document.getElementById('pick-palette');
-    const yourTeamDisplay = document.getElementById('your-team-display');
-    const enemyTeamDisplay = document.getElementById('enemy-team-display');
-    const yourTeamCount = document.getElementById('your-team-count');
-    const enemyTeamCount = document.getElementById('enemy-team-count');
-    const resultDiv = document.getElementById('result');
-    const modal = document.getElementById('settings-modal');
-    const settingsButton = document.getElementById('settings-button');
-    const closeButton = document.querySelector('.close-button');
-    const saveSettingsButton = document.getElementById('save-settings-button');
+    const bannedListContainer = document.getElementById('banned-list');
     const mapSelector = document.getElementById('map-selector');
-    const importFile = document.getElementById('importFile');
-    const exportButton = document.getElementById('exportButton');
-    const resetButton = document.getElementById('resetButton');
-    const suggestionCountInput = document.getElementById('suggestion-count');
-    const heroPoolSettingsDiv = document.getElementById('hero-pool-settings');
 
-    // === 状態管理 ===
-    let heroMaster = {}, counterData = {}, mapData = {}, defaultCounterData = {};
-    let playerRole = null;
-    let bannedHeroes = new Set();
-    let yourTeam = new Set(), enemyTeam = new Set();
-    let heroPool = {}; 
-    let suggestionCount = 3;
+    // --- 初期化処理 ---
+    async function initializeApp() {
+        // ローカルストレージから設定を読み込み
+        loadSettings();
 
-    // --- 補助関数 ---
-    const loadData = () => { try { const saved = localStorage.getItem('owCounterConfig'); counterData = saved ? JSON.parse(saved) : { ...defaultCounterData }; } catch (e) { counterData = { ...defaultCounterData }; }};
-    const saveData = () => { localStorage.setItem('owCounterConfig', JSON.stringify(counterData)); };
-    const getCounterScore = (heroA, heroB) => { const keys = [heroA, heroB].sort(); const vsKey = `${keys[0]} vs ${keys[1]}`; if (counterData[vsKey] !== undefined) { const val = counterData[vsKey]; return heroA === keys[0] ? val : -val; } return 0; };
-    const countRoles = (teamSet) => { const roles = { Tank: 0, Damage: 0, Support: 0 }; teamSet.forEach(key => { if(heroMaster[key]) roles[heroMaster[key].role]++; }); return roles; };
-    
-    // --- UI生成 ---
-    function createPaletteContent(paletteElement) {
-        const roles = { Tank: [], Damage: [], Support: [] };
-        const heroKeys = Object.keys(heroMaster).sort((a,b) => heroMaster[a].name_jp.localeCompare(heroMaster[b].name_jp, 'ja'));
-        for (const key of heroKeys) { if (roles[heroMaster[key].role]) roles[heroMaster[key].role].push(key); }
-        paletteElement.innerHTML = '';
-        for (const role in roles) {
-            const section = document.createElement('div'); section.className = 'role-section';
-            section.innerHTML = `<div class="role-title">${role}</div>`;
-            const container = document.createElement('div'); container.className = 'button-container';
-            roles[role].forEach(heroKey => {
-                const button = document.createElement('button'); button.className = 'hero-button'; button.textContent = heroMaster[heroKey].name_jp; button.dataset.heroKey = heroKey;
-                container.appendChild(button);
-            });
-            section.appendChild(container);
-            paletteElement.appendChild(section);
+        // データファイルの並列読み込み
+        [heroesData, countersData, mapsData, synergyData] = await Promise.all([
+            fetch('heroes.json').then(res => res.json()),
+            fetch('counters.json').then(res => res.json()),
+            fetch('maps.json').then(res => res.json()),
+            fetch('synergy.json').then(res => res.json())
+        ]);
+
+        // UIの生成
+        createHeroSlots();
+        populatePalettes();
+        populateMapSelector();
+        populateHeroPoolChecklist();
+
+        // イベントリスナーの設定
+        setupEventListeners();
+        
+        // 初回レンダリング
+        renderAll();
+    }
+
+    // --- UI生成関数 ---
+    function createHeroSlots() {
+        allySlotsContainer.innerHTML = '';
+        enemySlotsContainer.innerHTML = '';
+        for (let i = 0; i < 5; i++) {
+            allySlotsContainer.innerHTML += createSlotHTML('ally', i);
+            enemySlotsContainer.innerHTML += createSlotHTML('enemy', i);
         }
     }
-    function createMapSelector() { Object.keys(mapData).sort().forEach(mapName => { const option = document.createElement('option'); option.value = mapName; option.textContent = mapName; mapSelector.appendChild(option); }); }
-    
-    // --- UI更新 ---
-    function updateUI() {
-        const allPicks = new Set([...yourTeam, ...enemyTeam, ...bannedHeroes]);
-        document.querySelectorAll('.hero-button').forEach(button => {
-            const key = button.dataset.heroKey;
-            button.classList.remove('selected-your', 'selected-enemy', 'banned', 'disabled');
-            if (yourTeam.has(key)) button.classList.add('selected-your');
-            if (enemyTeam.has(key)) button.classList.add('selected-enemy');
-            if (bannedHeroes.has(key)) button.classList.add('banned');
-            if (allPicks.has(key)) button.classList.add('disabled');
-        });
-        updateTeamDisplay(yourTeamDisplay, yourTeam);
-        updateTeamDisplay(enemyTeamDisplay, enemyTeam);
-        analyze(); // UIが更新されるたびに分析を実行
-    }
-    function updateTeamDisplay(displayElement, teamSet) {
-        displayElement.innerHTML = '';
-        Array.from(teamSet).forEach(heroKey => {
-            const button = document.createElement('button'); button.className = 'hero-button'; button.textContent = heroMaster[heroKey]?.name_jp || '不明'; button.dataset.heroKey = heroKey;
-            displayElement.appendChild(button);
-        });
-        document.getElementById('your-team-count').textContent = `${teamSet.size}/5`;
-        document.getElementById('enemy-team-count').textContent = `${teamSet.size}/5`;
+
+    function createSlotHTML(team, index) {
+        const isMineClass = (team === 'ally' && index === state.myHeroSlotIndex) ? 'is-mine' : '';
+        return `
+            <div class="hero-slot-wrapper" data-team="${team}" data-index="${index}">
+                ${team === 'ally' ? createSuggestionHTML() : ''}
+                <div class="hero-slot ${team} ${isMineClass}" data-team="${team}" data-index="${index}">
+                    スロット ${index + 1}
+                </div>
+                ${team === 'enemy' ? createSuggestionHTML() : ''}
+            </div>
+        `;
     }
     
-    // --- 分析ロジック ---
-    function calculateBestPicks(targetTeam, ownTeam, heroesToExclude = new Set()) {
-        const results = { highRisk: [], lowRisk: [] };
-        if (!playerRole) return results;
-        const allPicks = new Set([...bannedHeroes, ...ownTeam, ...heroesToExclude]);
-        const availableHeroes = Object.keys(heroMaster).filter(k => !allPicks.has(k) && heroMaster[k]?.role === playerRole);
-        availableHeroes.forEach(ck => {
-            let score = 0;
-            targetTeam.forEach(ek => score += getCounterScore(ck, ek));
-            if (mapSelector.value && mapData[mapSelector.value]?.[ck]) score += mapData[mapSelector.value][ck];
-            const isCountered = Array.from(enemyTeam).some(ek => getCounterScore(ck, ek) < -1.0);
-            const suggestion = { key: ck, name: heroMaster[ck].name_jp, score };
-            if (isCountered) results.highRisk.push(suggestion);
-            else results.lowRisk.push(suggestion);
+    function createSuggestionHTML() {
+        return `
+            <div class="suggestion-area">
+                <div class="suggestion high-risk"></div>
+                <div class="suggestion low-risk"></div>
+            </div>
+        `;
+    }
+
+    function populatePalettes() {
+        heroPalette.innerHTML = '';
+        banPalette.innerHTML = '';
+        const sortedHeroes = [...heroesData].sort((a, b) => a.name.localeCompare(b.name));
+        for (const hero of sortedHeroes) {
+            const cardHTML = `<div class="hero-card" data-hero-id="${hero.id}">${hero.name}</div>`;
+            heroPalette.innerHTML += cardHTML;
+            banPalette.innerHTML += cardHTML;
+        }
+    }
+
+    function populateMapSelector() {
+        mapSelector.innerHTML = '<option value="none">マップ未選択</option>';
+        for (const mapId in mapsData) {
+            mapSelector.innerHTML += `<option value="${mapId}">${mapsData[mapId].name}</option>`;
+        }
+    }
+
+    function populateHeroPoolChecklist() {
+        const checklist = document.getElementById('hero-pool-checklist');
+        checklist.innerHTML = '';
+        const sortedHeroes = [...heroesData].sort((a, b) => a.name.localeCompare(b.name));
+        for (const hero of sortedHeroes) {
+            checklist.innerHTML += `
+                <div class="hero-pool-item">
+                    <input type="checkbox" id="pool-${hero.id}" data-hero-id="${hero.id}">
+                    <label for="pool-${hero.id}">${hero.name}</label>
+                </div>
+            `;
+        }
+    }
+    
+    // --- イベントリスナー設定 ---
+    function setupEventListeners() {
+        // ヒーロースロットクリック
+        document.getElementById('battle-board').addEventListener('click', (e) => {
+            if (e.target.closest('.hero-slot')) {
+                handleSlotClick(e.target.closest('.hero-slot'));
+            }
         });
-        results.highRisk.sort((a,b) => b.score - a.score);
-        results.lowRisk.sort((a,b) => b.score - a.score);
-        return results;
-    }
-    function displayResults(title, results, emptyMsg = "") {
-        const section = document.createElement('div');
-        section.className = 'result-section';
-        section.innerHTML = `<h3 class="result-title">${title}</h3>`;
-        const { highRisk = [], lowRisk = [] } = results;
-        if (lowRisk.length === 0 && highRisk.length === 0) {
-            section.innerHTML += `<p>${emptyMsg || "有効なピックはありません。"}</p>`;
-        } else {
-            if (lowRisk.length > 0) {
-                section.innerHTML += '<h4>ローリスク案（安全策）</h4>';
-                const list = document.createElement('ul'); list.className = 'result-list';
-                lowRisk.slice(0, suggestionCount).forEach(h => appendResultItem(list, h));
-                section.appendChild(list);
+
+        // ヒーロー選択パレットクリック
+        heroPalette.addEventListener('click', (e) => {
+            if (e.target.classList.contains('hero-card') && !e.target.classList.contains('banned') && !e.target.classList.contains('picked')) {
+                handleHeroSelection(e.target.dataset.heroId);
             }
-            if (highRisk.length > 0) {
-                section.innerHTML += '<h4>ハイリスク案（一発逆転策）</h4>';
-                const list = document.createElement('ul'); list.className = 'result-list';
-                highRisk.slice(0, suggestionCount).forEach(h => appendResultItem(list, h));
-                section.appendChild(list);
+        });
+        
+        // BANパレットクリック
+        banPalette.addEventListener('click', (e) => {
+            if (e.target.classList.contains('hero-card') && !e.target.classList.contains('picked')) {
+                toggleBan(e.target.dataset.heroId);
             }
-        }
-        resultDiv.appendChild(section);
-    }
-    function appendResultItem(list, hero) {
-        const item = document.createElement('li');
-        const isEnabled = heroPool[hero.key] !== false;
-        if (!isEnabled) item.classList.add('disabled');
-        item.innerHTML = `<span class="hero-name">${hero.name}</span> <span class="hero-score">スコア: ${hero.score.toFixed(1)}</span>`;
-        list.appendChild(item);
-    }
-    function analyze() {
-        resultDiv.innerHTML = '';
-        if (!playerRole) return;
-        const yourHero = Array.from(yourTeam).find(k => heroMaster[k] && heroMaster[k].role === playerRole);
-        const overallTitle = "【総合分析】敵チーム構成に対する推奨ピック";
-        const overallResults = calculateBestPicks(enemyTeam, yourTeam);
-        displayResults(overallTitle, overallResults);
-        if (yourHero) {
-            const threats = Array.from(enemyTeam).filter(ek => getCounterScore(yourHero, ek) < -1.0);
-            if (threats.length > 0) {
-                const selfTitle = `【自己分析】あなたの「${heroMaster[yourHero].name_jp}」がカウンターされているため、以下の変更を推奨`;
-                const selfResults = calculateBestPicks(enemyTeam, yourTeam, new Set([yourHero]));
-                displayResults(selfTitle, selfResults);
+        });
+        
+        // BAN解除クリック
+        bannedListContainer.addEventListener('click', (e) => {
+            if (e.target.classList.contains('banned-hero-item')) {
+                toggleBan(e.target.dataset.heroId);
             }
-        }
+        });
+
+        // マップ選択
+        mapSelector.addEventListener('change', (e) => {
+            state.currentMap = e.target.value;
+            triggerAnalysisUpdate();
+        });
+
+        // 全体分析ボタン
+        document.getElementById('global-analysis-btn').addEventListener('click', handleGlobalAnalysis);
+        
+        // リセットボタン群
+        document.getElementById('reset-all-btn').addEventListener('click', resetAll);
+        document.getElementById('reset-heroes-btn').addEventListener('click', resetHeroes);
+        document.getElementById('reset-bans-btn').addEventListener('click', resetBans);
+
+        // タブ切り替え
+        document.getElementById('tabs').addEventListener('click', (e) => {
+            if (e.target.classList.contains('tab-link')) {
+                switchTab(e.target.dataset.tab);
+            }
+        });
+
+        // 設定変更
+        document.getElementById('suggestion-count').addEventListener('change', (e) => {
+            state.settings.suggestionCount = parseInt(e.target.value, 10);
+            saveSettings();
+            triggerAnalysisUpdate();
+        });
+        document.getElementById('hero-pool-checklist').addEventListener('change', (e) => {
+            if (e.target.type === 'checkbox') {
+                const heroId = e.target.dataset.heroId;
+                if (e.target.checked) {
+                    if (!state.settings.heroPool.includes(heroId)) state.settings.heroPool.push(heroId);
+                } else {
+                    state.settings.heroPool = state.settings.heroPool.filter(id => id !== heroId);
+                }
+                saveSettings();
+                triggerAnalysisUpdate();
+                renderPalettes();
+            }
+        });
+        
+        // データ管理
+        document.getElementById('export-data-btn').addEventListener('click', exportData);
+        document.getElementById('import-data-input').addEventListener('change', importData);
+        document.getElementById('import-data-input').previousElementSibling.addEventListener('click', () => {
+             document.getElementById('import-data-input').click();
+        });
     }
     
     // --- イベントハンドラ ---
-    function handleRoleSelect(e) { if (e.target.classList.contains('role-btn')) { playerRole = e.target.dataset.role; localStorage.setItem('playerRole', playerRole); document.querySelectorAll('.role-btn').forEach(btn => btn.classList.remove('active')); e.target.classList.add('active'); updateUI(); } }
-    function toggleBan(e) { if (e.target.classList.contains('hero-button')) { const key = e.target.dataset.heroKey; if (yourTeam.has(key) || enemyTeam.has(key)) return; if (bannedHeroes.has(key)) bannedHeroes.delete(key); else if (bannedHeroes.size < 4) bannedHeroes.add(key); else alert("BANは最大4体までです。"); updateUI(); } }
-    function handlePick(e) { if (e.target.classList.contains('hero-button')) { const key = e.target.dataset.heroKey; if (bannedHeroes.has(key) || yourTeam.has(key) || enemyTeam.has(key)) return; const role = heroMaster[key].role; const roleLimit = (role === 'Tank' ? 1 : 2); if (countRoles(yourTeam)[role] < roleLimit) yourTeam.add(key); else if (countRoles(enemyTeam)[role] < roleLimit) enemyTeam.add(key); else alert(`このロールのヒーローは既に両チームとも満員です。`); updateUI(); } }
-    function handleDisplayClick(e) { if (e.target.classList.contains('hero-button')) { const key = e.target.dataset.heroKey; if (yourTeam.has(key)) yourTeam.delete(key); else if (enemyTeam.has(key)) enemyTeam.delete(key); updateUI(); } }
-    const handleImport = (e) => { const file = e.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = e => { try { counterData = JSON.parse(e.target.result); saveData(); alert('設定がインポートされました。'); updateUI(); } catch (err) { alert('ファイルの読み込みに失敗しました。'); } }; reader.readAsText(file); };
-    const handleExport = () => { const dataStr = `data:text/json;charset=utf-8,${encodeURIComponent(JSON.stringify(counterData, null, 2))}`; const a = document.createElement('a'); a.href = dataStr; a.download = "ow_counters_config.json"; a.click(); a.remove(); };
-    const handleReset = () => { if (confirm('設定をデフォルトに戻しますか？')) { counterData = { ...defaultCounterData }; saveData(); alert('設定がリセットされました。'); updateUI(); } };
-    function populateHeroPoolSettings() {
-        heroPoolSettingsDiv.innerHTML = '';
-        const roles = { Tank: [], Damage: [], Support: [] };
-        const heroKeys = Object.keys(heroMaster).sort((a,b) => heroMaster[a].name_jp.localeCompare(heroMaster[b].name_jp, 'ja'));
-        for (const key of heroKeys) { if (roles[heroMaster[key].role]) roles[heroMaster[key].role].push(key); }
-        for (const role in roles) {
-            const section = document.createElement('div'); section.className = 'role-section';
-            section.innerHTML = `<div class="role-title">${role}</div>`;
-            const container = document.createElement('div'); container.className = 'button-container';
-            roles[role].forEach(heroKey => {
-                const label = document.createElement('label'); label.className = 'hero-pool-label';
-                const checkbox = document.createElement('input');
-                checkbox.type = 'checkbox';
-                checkbox.dataset.heroKey = heroKey;
-                checkbox.checked = heroPool[heroKey] !== false;
-                label.appendChild(checkbox);
-                label.append(heroMaster[heroKey].name_jp);
-                container.appendChild(label);
-            });
-            section.appendChild(container);
-            heroPoolSettingsDiv.appendChild(section);
+    function handleSlotClick(slotElement) {
+        const team = slotElement.dataset.team;
+        const index = parseInt(slotElement.dataset.index, 10);
+        const currentHeroId = state[team === 'ally' ? 'allyTeam' : 'enemyTeam'][index];
+
+        if (currentHeroId) {
+            // ヒーローがセットされている -> 分析モード起動
+            clearAllSuggestions();
+            if (team === 'ally') {
+                if (index === state.myHeroSlotIndex) { // モード1: 自己分析
+                    state.activeAnalysis = { mode: 'Self-Analysis', target: { team, index } };
+                } else { // モード2: 味方支援
+                    state.activeAnalysis = { mode: 'Ally-Support', target: { team, index } };
+                }
+            } else { // モード3: 特定脅威排除
+                state.activeAnalysis = { mode: 'Threat-Elimination', target: { team, index } };
+            }
+            runActiveAnalysis();
+        } else {
+            // ヒーローがいない -> 選択モードへ
+            state.activeSelection = { team, index };
+            renderActiveSelection();
+            switchTab('heroes');
         }
     }
 
-    // === 初期化処理の呼び出し ===
-    async function initialize() {
-        try {
-            const [h, c, m] = await Promise.all([fetch('heroes.json').then(r=>r.json()), fetch('counters.json').then(r=>r.json()), fetch('maps.json').then(r=>r.json())]);
-            heroMaster = h; defaultCounterData = c; mapData = m;
+    function handleHeroSelection(heroId) {
+        if (state.activeSelection) {
+            const { team, index } = state.activeSelection;
+            state[team === 'ally' ? 'allyTeam' : 'enemyTeam'][index] = heroId;
+            state.activeSelection = null;
             
-            loadData();
-            createPaletteContent(banPalette);
-            createPaletteContent(pickPalette);
-            createMapSelector();
-            
-            playerRoleSelector.addEventListener('click', handleRoleSelect);
-            banPalette.addEventListener('click', toggleBan);
-            pickPalette.addEventListener('click', handlePick);
-            yourTeamDisplay.addEventListener('click', handleDisplayClick);
-            enemyTeamDisplay.addEventListener('click', handleDisplayClick);
-            
-            settingsButton.onclick = () => { modal.style.display = "block"; populateHeroPoolSettings(); };
-            closeButton.onclick = () => { modal.style.display = "none"; };
-            window.onclick = (event) => { if (event.target == modal) modal.style.display = "none"; };
-            saveSettingsButton.onclick = () => {
-                suggestionCount = parseInt(suggestionCountInput.value, 10);
-                heroPool = {};
-                heroPoolSettingsDiv.querySelectorAll('input[type="checkbox"]').forEach(cb => { heroPool[cb.dataset.heroKey] = cb.checked; });
-                localStorage.setItem('heroPool', JSON.stringify(heroPool));
-                localStorage.setItem('suggestionCount', suggestionCount);
-                alert("設定を保存しました。");
-                modal.style.display = "none";
-                updateUI();
-            };
-            importFile.addEventListener('change', handleImport);
-            exportButton.addEventListener('click', handleExport);
-            resetButton.addEventListener('click', handleReset);
-            
-            const savedRole = localStorage.getItem('playerRole');
-            if (savedRole) { playerRole = savedRole; playerRoleSelector.querySelector(`[data-role="${savedRole}"]`)?.classList.add('active'); }
-            heroPool = JSON.parse(localStorage.getItem('heroPool') || '{}');
-            suggestionCount = parseInt(localStorage.getItem('suggestionCount') || '3', 10);
-            suggestionCountInput.value = suggestionCount;
-
-            updateUI();
-        } catch (error) {
-            console.error("初期化エラー:", error);
-            alert("設定ファイルの読み込み、または初期化に失敗しました。");
+            triggerAnalysisUpdate();
+            renderAll();
         }
     }
     
-    initialize();
+    function toggleBan(heroId) {
+        const index = state.bannedHeroes.indexOf(heroId);
+        if (index > -1) {
+            state.bannedHeroes.splice(index, 1);
+        } else {
+            state.bannedHeroes.push(heroId);
+        }
+        triggerAnalysisUpdate();
+        renderBans();
+        renderPalettes();
+    }
+    
+    function handleGlobalAnalysis() {
+        clearAllSuggestions();
+        state.activeAnalysis = { mode: 'Strategic-Optimization', target: null };
+        runActiveAnalysis();
+    }
+
+    function triggerAnalysisUpdate() {
+        // イベント発生時、アクティブな分析があれば再実行
+        if (state.activeAnalysis) {
+            runActiveAnalysis();
+        }
+        renderAll();
+    }
+    
+    // --- 状態リセット関数 ---
+    function resetAll() {
+        if (!confirm('すべての設定と選択をリセットしますか？')) return;
+        state.allyTeam.fill(null);
+        state.enemyTeam.fill(null);
+        state.bannedHeroes = [];
+        state.currentMap = 'none';
+        state.activeAnalysis = null;
+        clearAllSuggestions();
+        renderAll();
+    }
+    function resetHeroes() {
+        state.allyTeam.fill(null);
+        state.enemyTeam.fill(null);
+        state.activeAnalysis = null;
+        clearAllSuggestions();
+        renderAll();
+    }
+    function resetBans() {
+        state.bannedHeroes = [];
+        triggerAnalysisUpdate();
+    }
+
+    // --- レンダリング（描画）関数 ---
+    function renderAll() {
+        renderSlots();
+        renderPalettes();
+        renderBans();
+        renderMapSelector();
+        renderSettings();
+    }
+
+    function renderSlots() {
+        document.querySelectorAll('.hero-slot').forEach(slot => {
+            const team = slot.dataset.team;
+            const index = parseInt(slot.dataset.index, 10);
+            const heroId = state[team === 'ally' ? 'allyTeam' : 'enemyTeam'][index];
+            if (heroId) {
+                slot.textContent = getHeroName(heroId);
+                slot.classList.add('selected');
+            } else {
+                slot.textContent = `スロット ${index + 1}`;
+                slot.classList.remove('selected');
+            }
+        });
+        renderActiveSelection();
+    }
+
+    function renderActiveSelection() {
+        document.querySelectorAll('.hero-slot').forEach(s => s.classList.remove('active-selection'));
+        if (state.activeSelection) {
+            const { team, index } = state.activeSelection;
+            document.querySelector(`.hero-slot[data-team="${team}"][data-index="${index}"]`).classList.add('active-selection');
+        }
+    }
+
+    function renderPalettes() {
+        const pickedHeroes = [...state.allyTeam, ...state.enemyTeam].filter(Boolean);
+        document.querySelectorAll('#hero-palette .hero-card, #ban-palette .hero-card').forEach(card => {
+            const heroId = card.dataset.heroId;
+            card.classList.remove('picked', 'banned');
+            if (pickedHeroes.includes(heroId)) {
+                card.classList.add('picked');
+            }
+            if (state.bannedHeroes.includes(heroId)) {
+                card.classList.add('banned');
+            }
+        });
+    }
+    
+    function renderBans() {
+        bannedListContainer.innerHTML = '';
+        state.bannedHeroes.forEach(heroId => {
+           bannedListContainer.innerHTML += `<div class="banned-hero-item" data-hero-id="${heroId}">${getHeroName(heroId)}</div>`;
+        });
+        document.querySelectorAll('#ban-palette .hero-card').forEach(card => {
+            const heroId = card.dataset.heroId;
+            card.style.backgroundColor = state.bannedHeroes.includes(heroId) ? 'var(--enemy-color)' : '';
+        });
+    }
+
+    function renderMapSelector() {
+        mapSelector.value = state.currentMap;
+    }
+
+    function renderSettings() {
+        document.getElementById('suggestion-count').value = state.settings.suggestionCount;
+        document.querySelectorAll('#hero-pool-checklist input').forEach(checkbox => {
+            checkbox.checked = state.settings.heroPool.includes(checkbox.dataset.heroId);
+        });
+    }
+
+    function clearAllSuggestions() {
+        document.querySelectorAll('.suggestion').forEach(el => {
+            el.textContent = '';
+            el.classList.remove('show');
+        });
+    }
+
+    // --- 分析ロジック ---
+    function runActiveAnalysis() {
+        if (!state.activeAnalysis) return;
+
+        const { mode, target } = state.activeAnalysis;
+        let scores, suggestions, suggestionSlot;
+
+        // 1. 全ヒーローのスコアを計算
+        scores = calculateAllHeroScores(mode, target);
+
+        // 2. 提案を選出・分類
+        suggestions = generateSuggestions(scores);
+        
+        // 3. 提案を表示
+        clearAllSuggestions();
+        
+        // 提案を表示するスロットを決定
+        if (mode === 'Self-Analysis' || mode === 'Ally-Support' || mode === 'Threat-Elimination') {
+            // 自分自身を入れ替える提案なので、自分のスロットに表示
+             suggestionSlot = document.querySelector(`.hero-slot-wrapper[data-team="ally"][data-index="${state.myHeroSlotIndex}"]`);
+        } else if (mode === 'Strategic-Optimization') {
+            // 全体分析は特定のトリガーがないので、とりあえず自分のスロットに表示
+            suggestionSlot = document.querySelector(`.hero-slot-wrapper[data-team="ally"][data-index="${state.myHeroSlotIndex}"]`);
+        }
+        
+        if (suggestionSlot) {
+            displaySuggestions(suggestionSlot, suggestions);
+        }
+    }
+
+    function calculateAllHeroScores(mode, target) {
+        const scores = [];
+        const pickedHeroes = [...state.allyTeam, ...state.enemyTeam].filter(Boolean);
+
+        for (const candidateHero of heroesData) {
+            // 提案候補ヒーローがBAN/ピック済みなら除外
+            if (state.bannedHeroes.includes(candidateHero.id) || pickedHeroes.includes(candidateHero.id)) {
+                continue;
+            }
+
+            // --- 各スコアの計算 ---
+            const myTeam = state.allyTeam.filter(h => h && h !== state.allyTeam[state.myHeroSlotIndex]); // 自分以外の味方
+            const enemyTeam = state.enemyTeam.filter(Boolean);
+
+            // 1. 対ヒーロースコア (分析モードにより変動)
+            let counterScore = 0;
+            switch(mode) {
+                case 'Self-Analysis': { // 自分をカウンターしている敵へのカウンター値合計
+                    const myHeroId = state.allyTeam[target.index];
+                    const threats = enemyTeam.filter(enemyId => getCounterScore(myHeroId, enemyId) < 0);
+                    counterScore = threats.reduce((sum, threatId) => sum + getCounterScore(candidateHero.id, threatId), 0);
+                    break;
+                }
+                case 'Ally-Support': { // 味方をカウンターしている敵へのカウンター値合計
+                    const allyHeroId = state.allyTeam[target.index];
+                    const threats = enemyTeam.filter(enemyId => getCounterScore(allyHeroId, enemyId) < 0);
+                    counterScore = threats.reduce((sum, threatId) => sum + getCounterScore(candidateHero.id, threatId), 0);
+                    break;
+                }
+                case 'Threat-Elimination': { // 特定の敵1体へのカウンター値
+                    const enemyHeroId = state.enemyTeam[target.index];
+                    counterScore = getCounterScore(candidateHero.id, enemyHeroId);
+                    break;
+                }
+                case 'Strategic-Optimization': { // 敵5人全員へのカウンター値合計
+                    counterScore = enemyTeam.reduce((sum, enemyId) => sum + getCounterScore(candidateHero.id, enemyId), 0);
+                    break;
+                }
+            }
+
+            // 2. マップ相性スコア
+            const mapScore = getMapScore(candidateHero.id, state.currentMap);
+
+            // 3. 構成シナジースコア (自分以外の味方とのシナジー)
+            const synergyScore = myTeam.reduce((sum, allyId) => sum + getSynergyScore(candidateHero.id, allyId), 0);
+            
+            // 最終的な「リターン」スコア
+            const returnScore = counterScore + mapScore + synergyScore;
+
+            // --- リスクと特化度の計算 ---
+            const counterScoresVsEnemies = enemyTeam.map(enemyId => getCounterScore(candidateHero.id, enemyId));
+
+            // リスク: 敵からの不利の合計
+            const riskScore = counterScoresVsEnemies.filter(s => s < 0).reduce((sum, s) => sum + Math.abs(s), 0);
+            
+            // 特化度: スコアのばらつき (標準偏差)
+            const specializationScore = calculateStandardDeviation(counterScoresVsEnemies);
+            
+            scores.push({
+                heroId: candidateHero.id,
+                return: returnScore,
+                risk: riskScore,
+                specialization: specializationScore
+            });
+        }
+        return scores;
+    }
+    
+    function generateSuggestions(scores) {
+        if (scores.length === 0) return { highRisk: [], lowRisk: [] };
+
+        // 1. 上位選抜: リターンスコアでソートし、上位6体を候補とする
+        const topCandidates = scores.sort((a, b) => b.return - a.return).slice(0, 6);
+        if (topCandidates.length === 0) return { highRisk: [], lowRisk: [] };
+
+        // 2. 詳細評価と相対的分類
+        const riskMedian = calculateMedian(topCandidates.map(c => c.risk));
+        const specMedian = calculateMedian(topCandidates.map(c => c.specialization));
+        
+        const highRisk = [];
+        const lowRisk = [];
+
+        for (const candidate of topCandidates) {
+            const isLowRisk = candidate.risk <= riskMedian && candidate.specialization <= specMedian;
+            if (isLowRisk) {
+                lowRisk.push(candidate);
+            } else {
+                highRisk.push(candidate);
+            }
+        }
+        
+        // 各カテゴリをリターンスコアでソート
+        highRisk.sort((a,b) => b.return - a.return);
+        lowRisk.sort((a,b) => b.return - a.return);
+
+        return { highRisk, lowRisk };
+    }
+    
+    function displaySuggestions(slotWrapper, suggestions) {
+        const { highRisk, lowRisk } = suggestions;
+        const count = state.settings.suggestionCount;
+
+        const highRiskArea = slotWrapper.querySelector('.suggestion.high-risk');
+        const lowRiskArea = slotWrapper.querySelector('.suggestion.low-risk');
+        
+        highRiskArea.innerHTML = '<h4>【ハイリスク案】</h4>';
+        lowRiskArea.innerHTML = '<h4>【ローリスク案】</h4>';
+
+        highRisk.slice(0, count).forEach(s => {
+            const heroName = getHeroName(s.heroId);
+            const isGreyedOut = state.settings.heroPool.includes(s.heroId);
+            highRiskArea.innerHTML += `<div class="${isGreyedOut ? 'greyed-out' : ''}">${heroName}</div>`;
+        });
+
+        lowRisk.slice(0, count).forEach(s => {
+            const heroName = getHeroName(s.heroId);
+            const isGreyedOut = state.settings.heroPool.includes(s.heroId);
+            lowRiskArea.innerHTML += `<div class="${isGreyedOut ? 'greyed-out' : ''}">${heroName}</div>`;
+        });
+        
+        highRiskArea.classList.add('show');
+        lowRiskArea.classList.add('show');
+    }
+
+    // --- データアクセス＆計算ヘルパー ---
+    function getHeroName(heroId) {
+        const hero = heroesData.find(h => h.id === heroId);
+        return hero ? hero.name : '不明';
+    }
+
+    function getCounterScore(heroA, heroB) {
+        if (countersData[heroA] && countersData[heroA][heroB] !== undefined) {
+            return countersData[heroA][heroB];
+        }
+        if (countersData[heroB] && countersData[heroB][heroA] !== undefined) {
+            return -countersData[heroB][heroA]; // 符号反転
+        }
+        return 0;
+    }
+
+    function getSynergyScore(heroA, heroB) {
+        if (synergyData[heroA] && synergyData[heroA][heroB] !== undefined) {
+            return synergyData[heroA][heroB];
+        }
+        if (synergyData[heroB] && synergyData[heroB][heroA] !== undefined) {
+            return synergyData[heroB][heroA]; // 符号はそのまま
+        }
+        return 0;
+    }
+
+    function getMapScore(heroId, mapId) {
+        if (mapsData[mapId] && mapsData[mapId].heroAffinity && mapsData[mapId].heroAffinity[heroId] !== undefined) {
+            return mapsData[mapId].heroAffinity[heroId];
+        }
+        return 0;
+    }
+    
+    function calculateMedian(arr) {
+        if (arr.length === 0) return 0;
+        const sorted = [...arr].sort((a, b) => a - b);
+        const mid = Math.floor(sorted.length / 2);
+        return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+    }
+    
+    function calculateStandardDeviation(arr) {
+        if (arr.length < 2) return 0;
+        const n = arr.length;
+        const mean = arr.reduce((a, b) => a + b) / n;
+        const variance = arr.reduce((a, b) => a + (b - mean) ** 2, 0) / n;
+        return Math.sqrt(variance);
+    }
+    
+    // --- パーソナライズ機能 ---
+    function saveSettings() {
+        localStorage.setItem('owAnalyzerSettings', JSON.stringify(state.settings));
+    }
+
+    function loadSettings() {
+        const saved = localStorage.getItem('owAnalyzerSettings');
+        if (saved) {
+            state.settings = JSON.parse(saved);
+        }
+    }
+
+    function switchTab(tabId) {
+        document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.tab-link').forEach(l => l.classList.remove('active'));
+        document.getElementById(`${tabId}-tab`).classList.add('active');
+        document.querySelector(`.tab-link[data-tab="${tabId}"]`).classList.add('active');
+    }
+    
+    function exportData() {
+        const dataToExport = {
+            counters: countersData,
+            synergy: synergyData,
+            maps: mapsData
+        };
+        const dataStr = JSON.stringify(dataToExport, null, 2);
+        const blob = new Blob([dataStr], {type: "application/json"});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'ow_analyzer_data.json';
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    function importData(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const importedData = JSON.parse(e.target.result);
+                if (importedData.counters && importedData.synergy && importedData.maps) {
+                    if (confirm('現在の相性・シナジー・マップデータをインポートしたデータで上書きしますか？')) {
+                        countersData = importedData.counters;
+                        synergyData = importedData.synergy;
+                        mapsData = importedData.maps;
+                        // UI再描画
+                        populateMapSelector();
+                        triggerAnalysisUpdate();
+                        alert('データのインポートが完了しました。');
+                    }
+                } else {
+                    alert('無効なファイル形式です。');
+                }
+            } catch (error) {
+                alert('ファイルの読み込みに失敗しました: ' + error.message);
+            }
+        };
+        reader.readAsText(file);
+        event.target.value = ''; // 同じファイルを再度選択できるように
+    }
+
+    // --- アプリケーション起動 ---
+    initializeApp();
 });

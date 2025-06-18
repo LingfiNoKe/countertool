@@ -1,5 +1,27 @@
 {
-    "King's Row": { "reinhardt": 1.0, "ana": 0.5, "reaper": 0.5 },
-    "Ilios": { "lucio": 1.5, "pharah": 0.5, "roadhog": 1.0, "winston": 0.5 },
-    "Watchpoint: Gibraltar": { "winston": 1.0, "mercy": 0.5, "widowmaker": 0.5 }
+    "kings-row": {
+        "name": "King's Row",
+        "heroAffinity": {
+            "reinhardt": 1.5,
+            "reaper": 1,
+            "cassidy": 0.5
+        }
+    },
+    "junkertown": {
+        "name": "Junkertown",
+        "heroAffinity": {
+            "pharah": 1,
+            "mercy": 1,
+            "ana": 0.5,
+            "reinhardt": -1
+        }
+    },
+    "lijiang-tower": {
+        "name": "Lijiang Tower",
+        "heroAffinity": {
+            "lucio": 1.5,
+            "winston": 1,
+            "pharah": 1
+        }
+    }
 }

@@ -21,12 +21,7 @@ body {
     user-select: none;
 }
 
-#battle-board {
-    display: flex;
-    justify-content: space-between;
-    height: 98vh;
-    gap: 1vw;
-}
+#battle-board { display: flex; justify-content: space-between; height: 98vh; gap: 1vw; }
 
 .team-column, #central-panel {
     background-color: var(--panel-bg);
@@ -35,268 +30,73 @@ body {
     display: flex;
     flex-direction: column;
 }
-
-.team-column {
-    flex: 1;
-    min-width: 250px;
-}
-
-#central-panel {
-    flex: 2;
-    min-width: 400px;
-}
-
-.team-header {
-    padding: 10px 15px;
-    border-bottom: 1px solid var(--border-color);
-    text-align: center;
-}
-
+.team-column { flex: 1; min-width: 250px; }
+#central-panel { flex: 2; min-width: 400px; }
+.team-header { padding: 10px 15px; border-bottom: 1px solid var(--border-color); text-align: center; }
 h2 { margin: 0; }
-
-.team-role-icons {
-    display: flex;
-    justify-content: center;
-    gap: 8px;
-    margin-top: 8px;
-}
-.role-icon {
-    width: 20px;
-    height: 20px;
-    background-size: contain;
-    background-repeat: no-repeat;
-    background-position: center;
-}
+.team-role-icons { display: flex; justify-content: center; gap: 8px; margin-top: 8px; min-height: 20px; }
+.role-icon { width: 20px; height: 20px; background-size: contain; background-repeat: no-repeat; background-position: center; }
 .role-icon.tank { background-image: url('https://d15f34w2p8l1cc.cloudfront.net/overwatch/7f7dd2499232042f359c4704b4b3972c3d59648a7374a491f2122615462eadf8.png'); }
 .role-icon.damage { background-image: url('https://d15f34w2p8l1cc.cloudfront.net/overwatch/5443343684b3e813a3501309f3e461a68ef3331b2c45a706f856f70a58e0a30b.png'); }
 .role-icon.support { background-image: url('https://d15f34w2p8l1cc.cloudfront.net/overwatch/92535565551693356814a09e0568c09a852026048d04265538356942e26027a4.png'); }
-
-
-.team-slots {
-    flex-grow: 1;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-around;
-    padding: 10px;
-}
-
-.hero-slot-wrapper {
-    display: flex;
-    align-items: center;
-    margin: 5px 0;
-}
-#enemy-team-slots .hero-slot-wrapper {
-    flex-direction: row-reverse;
-}
-
-.hero-slot {
-    flex-grow: 1;
-    height: 60px;
-    border: 2px dashed var(--border-color);
-    border-radius: 5px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    font-size: 1.1em;
-    font-weight: bold;
-}
-
+.team-slots { flex-grow: 1; display: flex; flex-direction: column; justify-content: space-around; padding: 10px; }
+.hero-slot-wrapper { display: flex; align-items: center; margin: 5px 0; }
+#enemy-team-slots .hero-slot-wrapper { flex-direction: row-reverse; }
+.hero-slot { flex-grow: 1; height: 60px; border: 2px dashed var(--border-color); border-radius: 5px; display: flex; justify-content: center; align-items: center; cursor: pointer; transition: all 0.2s ease; font-size: 1.1em; font-weight: bold; }
 .hero-slot.ally { border-color: var(--ally-color); }
 .hero-slot.enemy { border-color: var(--enemy-color); }
-
-.hero-slot.selected {
-    border-style: solid;
-    color: var(--text-color);
-}
+.hero-slot.selected { border-style: solid; color: var(--text-color); }
 .hero-slot.ally.selected { background-color: rgba(93, 156, 236, 0.2); }
 .hero-slot.enemy.selected { background-color: rgba(229, 115, 115, 0.2); }
-
-.hero-slot.active-selection {
-    border-color: var(--highlight-color);
-    box-shadow: 0 0 10px var(--highlight-color);
-}
-
-.hero-slot.is-mine {
-    position: relative;
-}
-.hero-slot.is-mine::after {
-    content: 'YOU';
-    position: absolute;
-    top: 2px;
-    right: 5px;
-    font-size: 0.6em;
-    color: var(--highlight-color);
-    font-weight: bold;
-}
-
-.suggestion-area {
-    width: 120px;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    padding: 0 10px;
-    font-size: 0.9em;
-}
-
-.suggestion {
-    padding: 4px 8px;
-    border-radius: 4px;
-    background-color: var(--suggestion-bg);
-    text-align: center;
-    visibility: hidden;
-}
-
-.suggestion h4 {
-    margin: 0 0 4px 0;
-    font-size: 0.8em;
-    color: var(--highlight-color);
-    font-weight: normal;
-}
-.suggestion div {
-    padding: 2px 0;
-}
-.suggestion div.greyed-out {
-    opacity: 0.5;
-    text-decoration: line-through;
-}
-
-
+.hero-slot.active-selection { border-color: var(--highlight-color); box-shadow: 0 0 10px var(--highlight-color); }
+.hero-slot.is-mine::after { content: 'YOU'; position: absolute; top: 2px; right: 5px; font-size: 0.6em; color: var(--highlight-color); font-weight: bold; }
+.suggestion-area { width: 120px; display: flex; flex-direction: column; gap: 4px; padding: 0 10px; font-size: 0.9em; }
+.suggestion { padding: 4px 8px; border-radius: 4px; background-color: var(--suggestion-bg); text-align: center; visibility: hidden; }
+.suggestion h4 { margin: 0 0 4px 0; font-size: 0.8em; color: var(--highlight-color); font-weight: normal; }
+.suggestion div { padding: 2px 0; }
+.suggestion div.greyed-out { opacity: 0.5; text-decoration: line-through; }
 .suggestion.show { visibility: visible; }
 .suggestion.high-risk { border-left: 3px solid var(--high-risk-color); }
-#enemy-team-slots .suggestion.high-risk { border-left: none; border-right: 3px solid var(--high-risk-color); }
+#enemy-team-slots .suggestion.high-risk, #global-suggestion-area .suggestion.high-risk { border-left: none; border-right: 3px solid var(--high-risk-color); }
 .suggestion.low-risk { border-left: 3px solid var(--low-risk-color); }
-#enemy-team-slots .suggestion.low-risk { border-left: none; border-right: 3px solid var(--low-risk-color); }
-
-
-/* 中央パネル */
-#tabs {
-    display: flex;
-    border-bottom: 1px solid var(--border-color);
-}
-.tab-link {
-    flex-grow: 1;
-    padding: 12px;
-    cursor: pointer;
-    background-color: transparent;
-    border: none;
-    color: var(--text-color);
-    font-size: 1.1em;
-    border-bottom: 3px solid transparent;
-}
-.tab-link.active {
-    border-bottom-color: var(--highlight-color);
-    background-color: rgba(255, 193, 7, 0.1);
-}
+#enemy-team-slots .suggestion.low-risk, #global-suggestion-area .suggestion.low-risk { border-left: none; border-right: 3px solid var(--low-risk-color); }
+#tabs { display: flex; border-bottom: 1px solid var(--border-color); }
+.tab-link { flex-grow: 1; padding: 12px; cursor: pointer; background-color: transparent; border: none; color: var(--text-color); font-size: 1.1em; border-bottom: 3px solid transparent; }
+.tab-link.active { border-bottom-color: var(--highlight-color); background-color: rgba(255, 193, 7, 0.1); }
 .tab-pane { display: none; }
 .tab-pane.active { display: block; }
 #tab-content { padding: 15px; overflow-y: auto; flex-grow: 1; }
-
-#hero-palette, #ban-palette {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-    gap: 8px;
-}
-
-/* 【追記】ロール見出しのスタイル */
-.role-header {
-    grid-column: 1 / -1; /* グリッドレイアウトの行全体を占有 */
-    margin: 15px 0 5px 0;
-    padding-bottom: 5px;
-    border-bottom: 1px solid var(--border-color);
-    color: var(--highlight-color);
-    font-size: 1.1em;
-}
-/* 最初の見出しの上マージンをなくす */
-.role-header:first-of-type {
-    margin-top: 0;
-}
-
-.hero-card {
-    padding: 8px;
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    text-align: center;
-    cursor: pointer;
-    transition: background-color 0.2s;
-}
+#hero-palette, #ban-palette { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; }
+.role-header { grid-column: 1 / -1; margin: 15px 0 5px 0; padding-bottom: 5px; border-bottom: 1px solid var(--border-color); color: var(--highlight-color); font-size: 1.1em; }
+.role-header:first-of-type { margin-top: 0; }
+.hero-card { padding: 8px; border: 1px solid var(--border-color); border-radius: 4px; text-align: center; cursor: pointer; transition: background-color 0.2s; }
 .hero-card:hover { background-color: #3e444f; }
-.hero-card.banned, .hero-card.picked {
-    opacity: 0.4;
-    cursor: not-allowed;
-    background-color: var(--disabled-color);
-}
-.hero-card.greyed-out {
-    opacity: 0.6;
-    background-color: #4a5260;
-    position: relative;
-}
-.hero-card.greyed-out::after {
-    content: '(Pool)';
-    font-size: 0.7em;
-    color: #ccc;
-    display: block;
-}
-
-#banned-list {
-    display: flex;
-    gap: 10px;
-    margin-top: 10px;
-    flex-wrap: wrap;
-}
-
-.banned-hero-item {
-    padding: 5px 10px;
-    background: var(--enemy-color);
-    color: var(--bg-color);
-    font-weight: bold;
-    border-radius: 4px;
-    cursor: pointer;
-}
-
-/* 設定タブ */
-.setting-item {
-    margin-bottom: 20px;
-}
-.setting-item label {
-    display: block;
-    margin-bottom: 8px;
-}
-select, .control-btn {
-    background-color: var(--suggestion-bg);
-    color: var(--text-color);
-    border: 1px solid var(--border-color);
-    padding: 8px 12px;
-    border-radius: 4px;
-    cursor: pointer;
-}
-#hero-pool-checklist {
-    max-height: 200px;
-    overflow-y: auto;
-    border: 1px solid var(--border-color);
-    padding: 10px;
-}
-.hero-pool-item {
-    display: flex;
-    align-items: center;
-}
-
-/* グローバル機能 */
-.global-controls {
-    padding: 15px;
-    border-top: 1px solid var(--border-color);
-    display: flex;
-    align-items: center;
-}
+.hero-card.banned, .hero-card.picked { opacity: 0.4; cursor: not-allowed; background-color: var(--disabled-color); }
+.hero-card.role-locked { opacity: 0.3; cursor: not-allowed; background-color: var(--bg-color); border-color: var(--bg-color); position: relative; }
+.hero-card.role-locked::before { content: 'ROLE LIMIT'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: var(--enemy-color); font-size: 0.8em; font-weight: bold; text-shadow: 1px 1px 2px #000; }
+.hero-card.greyed-out::after { content: '(Pool)'; font-size: 0.7em; color: #ccc; display: block; }
+#banned-list { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+.banned-hero-item { padding: 5px 10px; background: var(--enemy-color); color: var(--bg-color); font-weight: bold; border-radius: 4px; cursor: pointer; }
+.setting-item { margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid var(--border-color); }
+.setting-item:last-of-type { border-bottom: none; }
+.setting-item > label { display: block; margin-bottom: 8px; font-weight: bold; }
+.setting-item small { display: block; margin-top: 8px; color: #aaa; font-size: 0.85em; }
+#role-limit-settings, #hero-rule-settings { display: flex; flex-direction: column; gap: 10px; }
+.role-limit-item, .hero-rule-item { display: grid; grid-template-columns: 100px 1fr; align-items: center; }
+.hero-rule-item { grid-template-columns: auto 1fr; gap: 10px; }
+.role-limit-item label, .hero-rule-item label { margin: 0; text-transform: capitalize; }
+select, input[type="number"], .control-btn { background-color: var(--suggestion-bg); color: var(--text-color); border: 1px solid var(--border-color); padding: 8px 12px; border-radius: 4px; cursor: pointer; }
+input[type="number"] { width: 60px; }
+#hero-pool-checklist { max-height: 150px; overflow-y: auto; border: 1px solid var(--border-color); padding: 10px; }
+.hero-pool-item { display: flex; align-items: center; }
+.global-controls { padding: 15px; border-top: 1px solid var(--border-color); display: flex; align-items: center; }
 .bottom-controls { justify-content: space-around; }
 .top-controls { justify-content: center; gap: 10px; }
 .control-btn { transition: background-color 0.2s; }
 .control-btn:hover { background-color: #4a5260; }
-.analysis-btn {
-    background-color: var(--ally-color);
-    font-weight: bold;
-    font-size: 1.2em;
-    padding: 12px 25px;
-}
+.analysis-btn { background-color: var(--ally-color); font-weight: bold; font-size: 1.2em; padding: 12px 25px; }
 .analysis-btn:hover { background-color: #4889d6; }
+/* 【変更】全体分析エリアのレイアウト調整 */
+#global-analysis-container { justify-content: flex-end; padding-right: 15px; }
+#global-analysis-btn { flex-shrink: 0; }
+#global-suggestion-area { padding-left: 15px; }

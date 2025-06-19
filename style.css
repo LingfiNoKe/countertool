@@ -1,17 +1,8 @@
 :root {
-    --bg-color: #1a1e23;
-    --panel-bg: #2c313a;
-    --border-color: #4a5260;
-    --text-color: #e6e6e6;
-    --ally-color: #5d9cec;
-    --enemy-color: #e57373;
-    --highlight-color: #ffc107;
-    --suggestion-bg: #373c47;
-    --high-risk-color: #ff8a65;
-    --low-risk-color: #81c784;
-    --disabled-color: #757575;
+    --bg-color: #1a1e23; --panel-bg: #2c313a; --border-color: #4a5260; --text-color: #e6e6e6;
+    --ally-color: #5d9cec; --enemy-color: #e57373; --highlight-color: #ffc107; --suggestion-bg: #373c47;
+    --high-risk-color: #ff8a65; --low-risk-color: #81c784; --disabled-color: #757575;
 }
-
 body { font-family: 'Segoe UI', 'Meiryo', sans-serif; background-color: var(--bg-color); color: var(--text-color); margin: 0; padding: 1vw; user-select: none; }
 #battle-board { display: flex; justify-content: space-between; height: 98vh; gap: 1vw; }
 .team-column, #central-panel { background-color: var(--panel-bg); border: 1px solid var(--border-color); border-radius: 8px; display: flex; flex-direction: column; }
@@ -46,8 +37,6 @@ h2 { margin: 0; }
 #tabs { display: flex; border-bottom: 1px solid var(--border-color); }
 .tab-link { flex-grow: 1; padding: 12px; cursor: pointer; background-color: transparent; border: none; color: var(--text-color); font-size: 1.1em; border-bottom: 3px solid transparent; }
 .tab-link.active { border-bottom-color: var(--highlight-color); background-color: rgba(255, 193, 7, 0.1); }
-.tab-pane { display: none; }
-.tab-pane.active { display: block; }
 #tab-content { padding: 15px; overflow-y: auto; flex-grow: 1; }
 #hero-palette, #ban-palette { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; }
 .role-header { grid-column: 1 / -1; margin: 15px 0 5px 0; padding-bottom: 5px; border-bottom: 1px solid var(--border-color); color: var(--highlight-color); font-size: 1.1em; text-transform: capitalize; }
@@ -73,9 +62,16 @@ input[type="number"] { width: 60px; }
 .global-controls { padding: 15px; border-top: 1px solid var(--border-color); display: flex; align-items: center; }
 .bottom-controls { justify-content: space-around; }
 .top-controls { justify-content: center; gap: 10px; }
-.control-btn { transition: background-color 0.2s; }
-.control-btn:hover { background-color: #4a5260; }
 .analysis-label { font-weight: bold; font-size: 1.2em; flex-shrink: 0; }
 #global-analysis-container { justify-content: flex-end; padding-right: 15px; }
 #global-suggestion-area { padding-left: 15px; flex-grow: 1; }
 .suggestion-message { color: #aaa; font-style: italic; font-size: 0.9em; text-align: center; padding: 10px 0; }
+
+/* 【新設】カウンター関係図のスタイル */
+.hidden { display: none !important; }
+#relation-view { display: flex; justify-content: space-between; padding: 20px; flex-grow: 1; position: relative; }
+.relation-list { display: flex; flex-direction: column; justify-content: space-around; }
+.relation-hero { padding: 10px 15px; border-radius: 5px; font-weight: bold; margin: 5px 0; }
+#relation-ally-list .relation-hero { background-color: var(--ally-color); color: var(--bg-color); }
+#relation-enemy-list .relation-hero { background-color: var(--enemy-color); color: var(--bg-color); }
+#relation-svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }

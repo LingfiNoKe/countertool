@@ -24,10 +24,27 @@ document.addEventListener('DOMContentLoaded', () => {
         runAllAnalysesAndRender();
     }
 
+    /**
+     * 【修正箇所】
+     * DOM要素をキャッシュする関数。
+     * プログラム内で使う変数名（キー）と、HTMLのID（値）を正しく紐付ける。
+     */
     function cacheDOMElements() {
-        const ids = ['battle-board', 'ally-team-column', 'ally-team-slots', 'enemy-team-column', 'enemy-team-slots', 'central-panel', 'tabs', 'hero-palette', 'ban-palette', 'banned-list', 'settings-tab', 'team-size-select', 'role-limit-settings', 'allow-duplicates-checkbox', 'suggestion-count', 'hero-pool-checklist', 'map-selector', 'global-suggestion-area', 'reset-all-btn', 'reset-heroes-btn', 'reset-bans-btn', 'export-data-btn', 'import-data-input'];
-        ids.forEach(id => elements[id] = document.getElementById(id));
+        const idMap = {
+            battleBoard: 'battle-board', allyTeamColumn: 'ally-team-column', allySlotsContainer: 'ally-team-slots',
+            enemyTeamColumn: 'enemy-team-column', enemySlotsContainer: 'enemy-team-slots', centralPanel: 'central-panel',
+            tabs: 'tabs', heroPalette: 'hero-palette', banPalette: 'ban-palette', bannedList: 'banned-list',
+            settingsTab: 'settings-tab', teamSizeSelect: 'team-size-select', roleLimitSettingsContainer: 'role-limit-settings',
+            allowDuplicatesCheckbox: 'allow-duplicates-checkbox', suggestionCount: 'suggestion-count',
+            heroPoolChecklist: 'hero-pool-checklist', mapSelector: 'map-selector', globalSuggestionArea: 'global-suggestion-area',
+            resetAllBtn: 'reset-all-btn', resetHeroesBtn: 'reset-heroes-btn', resetBansBtn: 'reset-bans-btn',
+            exportBtn: 'export-data-btn', importInput: 'import-data-input'
+        };
+        for (const key in idMap) {
+            elements[key] = document.getElementById(idMap[key]);
+        }
     }
+    
     async function loadData() {
         [heroesData, countersData, mapsData, synergyData] = await Promise.all([
             fetch('heroes.json').then(r=>r.json()), fetch('counters.json').then(r=>r.json()),
@@ -63,10 +80,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const wrapperStyle = team === 'enemy' ? ' style="flex-direction: row-reverse;"' : '';
         return `<div class="hero-slot-wrapper" data-team="${team}" data-index="${index}"${wrapperStyle}><div class="suggestion-area"></div><div class="hero-slot ${team} ${isMineClass}" data-team="${team}" data-index="${index}">スロット ${index + 1}</div></div>`;
     }
-    /**
-     * 【変更】
-     * ロール名をハードコーディングせず、heroes.jsonから動的に取得してUIを生成する。
-     */
     function populatePalettes() {
         const uniqueRoles = getUniqueRoles();
         [elements.heroPalette, elements.banPalette].forEach(p => { 
@@ -88,7 +101,7 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.battleBoard.addEventListener('click', e => { if (e.target.closest('.hero-slot')) handleSlotClick(e.target.closest('.hero-slot')); });
         elements.heroPalette.addEventListener('click', e => { if (e.target.matches('.hero-card:not(.banned,.picked,.role-locked)')) handleHeroSelection(e.target.dataset.heroId); });
         elements.banPalette.addEventListener('click', e => { if (e.target.matches('.hero-card')) toggleBan(e.target.dataset.heroId); });
-        elements.bannedListContainer.addEventListener('click', e => { if (e.target.matches('.banned-hero-item')) toggleBan(e.target.dataset.heroId); });
+        elements.bannedList.addEventListener('click', e => { if (e.target.matches('.banned-hero-item')) toggleBan(e.target.dataset.heroId); });
         elements.mapSelector.addEventListener('change', () => { state.currentMap = elements.mapSelector.value; runAllAnalysesAndRender(); });
         elements.suggestionCount.addEventListener('change', () => { state.settings.suggestionCount = parseInt(elements.suggestionCount.value,10); saveAndReRender(); });
         elements.teamSizeSelect.addEventListener('change', () => { state.settings.teamSize = parseInt(elements.teamSizeSelect.value, 10); saveSettings(); initializeAppState(); createUI(); runAllAnalysesAndRender(); });
@@ -124,14 +137,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const myHeroId = state.allyTeam[state.myHeroSlotIndex];
 
         for (let i = 0; i < state.settings.teamSize; i++) {
+            const allyTarget = { team: 'ally', index: i };
+            const enemyTarget = { team: 'enemy', index: i };
             if (state.allyTeam[i]) {
                 const mode = i === state.myHeroSlotIndex ? 'Self-Analysis' : 'Ally-Support';
                 const threats = getThreats(state.allyTeam[i]);
-                if (threats.length > 0) displaySuggestions({ team: 'ally', index: i }, runAnalysis(mode, threats));
-                else displayMessage({ team: 'ally', index: i }, '明確な脅威なし');
+                if (threats.length > 0) displaySuggestions(allyTarget, runAnalysis(mode, threats));
+                else displayMessage(allyTarget, '明確な脅威なし');
             }
             if (myHeroId && state.enemyTeam[i]) {
-                displaySuggestions({ team: 'enemy', index: i }, runAnalysis('Threat-Elimination', state.enemyTeam[i]));
+                displaySuggestions(enemyTarget, runAnalysis('Threat-Elimination', state.enemyTeam[i]));
             }
         }
         if (myHeroId && isEnemyPicked) {
@@ -209,7 +224,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const hero = getHeroById(card.dataset.heroId);
             card.className = 'hero-card';
             if (state.bannedHeroes.includes(hero.id)) card.classList.add('banned');
-            if (pickedInTeam.includes(hero.id)) card.classList.add('picked');
+            if (pickedInTeam.includes(hero.id) && hero.id !== currentHero?.id) card.classList.add('picked');
             const limit = state.settings.roleLimits[hero.role] ?? state.settings.teamSize;
             let isLocked = (roleCounts[hero.role] || 0) >= limit;
             if (isLocked && currentHero && hero.role === currentHero.role) { isLocked = false; }
@@ -217,11 +232,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (isLocked) card.classList.add('role-locked');
         });
     }
-    function renderBans() { elements.bannedListContainer.innerHTML = state.bannedHeroes.map(id => `<div class="banned-hero-item" data-hero-id="${id}">${getHeroById(id).name}</div>`).join(''); }
-    /**
-     * 【変更】
-     * チームヘッダーのロールアイコンも動的に生成する。
-     */
+    function renderBans() { elements.bannedList.innerHTML = state.bannedHeroes.map(id => `<div class="banned-hero-item" data-hero-id="${id}">${getHeroById(id).name}</div>`).join(''); }
     function renderTeamRoleIcons() {
         const container = document.querySelector('#ally-team-column .team-role-icons');
         container.innerHTML = '';
@@ -257,8 +268,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- データアクセス＆ヘルパー ---
     function getHeroById(id) { return heroesData.find(h => h.id === id); }
     function getThreats(heroId) { return state.enemyTeam.filter(e => e && getCounterScore(heroId, e) < 0); }
-    function getWrapper(target) { return (target === 'global') ? elements.globalSuggestionArea.parentElement : document.querySelector(`.hero-slot-wrapper[data-team="${target.team}"][data-index="${target.index}"]`); }
-    function getUniqueRoles() { return [...new Set(heroesData.map(h => h.role))].sort((a,b) => (['tank','damage','support'].indexOf(a)) - (['tank','damage','support'].indexOf(b))); }
+    function getWrapper(target) { return (target === 'global') ? elements.globalSuggestionArea.parentElement.parentElement : document.querySelector(`.hero-slot-wrapper[data-team="${target.team}"][data-index="${target.index}"]`); }
+    function getUniqueRoles() { const order=['tank','damage','support']; return [...new Set(heroesData.map(h=>h.role))].sort((a,b)=>(order.indexOf(a)===-1?Infinity:order.indexOf(a))-(order.indexOf(b)===-1?Infinity:order.indexOf(b)));}
     function countRoles(team) { return team.filter(Boolean).reduce((acc,id)=>{const r=getHeroById(id).role;acc[r]=(acc[r]||0)+1;return acc;},{});}
     function getCounterScore(hA,hB) { if(!hA||!hB)return 0; if(countersData[hA]?.[hB]!==undefined)return countersData[hA][hB]; if(countersData[hB]?.[hA]!==undefined)return -countersData[hB][hA]; return 0;}
     function getSynergyScore(hA,hB) { if(!hA||!hB)return 0; if(synergyData[hA]?.[hB]!==undefined)return synergyData[hA][hB]; if(synergyData[hB]?.[hA]!==undefined)return synergyData[hB][hA]; return 0;}
@@ -268,8 +279,21 @@ document.addEventListener('DOMContentLoaded', () => {
     function saveSettings() { localStorage.setItem('heroAnalyzerSettings', JSON.stringify(state.settings)); }
     function loadSettings() {
         const saved = localStorage.getItem('heroAnalyzerSettings');
-        if (saved) Object.assign(state.settings, JSON.parse(saved));
-        let needsSave=false; getUniqueRoles().forEach(r=>{if(state.settings.roleLimits[r]===undefined){state.settings.roleLimits[r]=r==='tank'?1:(r==='damage'?2:2);needsSave=true;}}); if(needsSave)saveSettings();
+        if (saved) {
+            const parsedSettings = JSON.parse(saved);
+            // 古い設定との互換性も考慮しつつ、マージする
+            state.settings = { ...state.settings, ...parsedSettings };
+        }
+        // デフォルトのロール制限を設定（未設定の場合）
+        let needsSave = false;
+        getUniqueRoles().forEach(r => {
+            if (state.settings.roleLimits[r] === undefined) {
+                const defaults = { tank: 1, damage: 2, support: 2 };
+                state.settings.roleLimits[r] = defaults[r] ?? 1;
+                needsSave = true;
+            }
+        });
+        if (needsSave) saveSettings();
     }
     function switchTab(tabId) { document.querySelectorAll('.tab-pane,.tab-link').forEach(el=>el.classList.remove('active')); document.getElementById(`${tabId}-tab`).classList.add('active'); document.querySelector(`.tab-link[data-tab="${tabId}"]`).classList.add('active'); }
     function exportData() { const blob=new Blob([JSON.stringify({counters:countersData,synergy:synergyData,maps:mapsData},null,2)],{type:"application/json"});const a=Object.assign(document.createElement('a'),{href:URL.createObjectURL(blob),download:'analyzer_data.json'});a.click();URL.revokeObjectURL(a.href);}

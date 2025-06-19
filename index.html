@@ -4,16 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hero Pick Tactical Analyzer</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leader-line/1.0.7/leader-line.min.js.LICENSE">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div id="battle-board">
         <!-- 左カラム: 味方チーム -->
         <div class="team-column" id="ally-team-column">
-            <div class="team-header">
-                <h2>味方チーム</h2>
-                <div class="team-role-icons"></div>
-            </div>
+            <div class="team-header"><h2>味方チーム</h2><div class="team-role-icons"></div></div>
             <div id="ally-team-slots" class="team-slots"></div>
             <div id="reset-controls" class="global-controls bottom-controls">
                 <button id="reset-all-btn" class="control-btn">全リセット</button>
@@ -24,77 +22,45 @@
 
         <!-- 中央カラム: 操作パネル -->
         <div id="central-panel">
-            <div id="tabs">
-                <button class="tab-link active" data-tab="heroes">キャラ</button>
-                <button class="tab-link" data-tab="bans">BAN</button>
-                <button class="tab-link" data-tab="settings">設定</button>
+            <div id="tab-interface">
+                <div id="tabs">
+                    <button class="tab-link active" data-tab="heroes">キャラ</button>
+                    <button class="tab-link" data-tab="bans">BAN</button>
+                    <button class="tab-link" data-tab="settings">設定</button>
+                </div>
+                <div id="tab-content">
+                    <div id="heroes-tab" class="tab-pane active"><div id="hero-palette"></div></div>
+                    <div id="bans-tab" class="tab-pane">
+                        <div id="ban-palette"></div>
+                        <div id="banned-heroes-display"><h3>BAN指定中のヒーロー</h3><div id="banned-list"></div></div>
+                    </div>
+                    <div id="settings-tab" class="tab-pane">
+                        <h3>パーソナライズ設定</h3>
+                        <div class="setting-item"><label for="team-size-select">チーム人数:</label><select id="team-size-select"><option value="4">4人</option><option value="5" selected>5人</option><option value="6">6人</option></select></div>
+                        <div class="setting-item"><label>ロール最大数設定 (チーム内):</label><div id="role-limit-settings"></div></div>
+                        <div class="setting-item"><label>ヒーロー選択ルール:</label><div id="hero-rule-settings"><div class="hero-rule-item"><input type="checkbox" id="allow-duplicates-checkbox"><label for="allow-duplicates-checkbox">チーム内のヒーロー重複を許可</label></div></div></div>
+                        <div class="setting-item"><label for="suggestion-count">提案表示数:</label><select id="suggestion-count"><option value="1">1</option><option value="2">2</option><option value="3" selected>3</option></select></div>
+                        <div class="setting-item"><label>ヒーロープール:</label><div id="hero-pool-checklist"></div></div>
+                        <div class="setting-item data-management"><h4>データ管理</h4><button id="export-data-btn" class="control-btn">エクスポート</button><label for="import-data-input" class="control-btn">インポート</label><input type="file" id="import-data-input" accept=".json" style="display:none;"></div>
+                    </div>
+                </div>
             </div>
-            <div id="tab-content">
-                <div id="heroes-tab" class="tab-pane active"><div id="hero-palette"></div></div>
-                <div id="bans-tab" class="tab-pane">
-                    <div id="ban-palette"></div>
-                    <div id="banned-heroes-display">
-                        <h3>BAN指定中のヒーロー</h3>
-                        <div id="banned-list"></div>
-                    </div>
-                </div>
-                <div id="settings-tab" class="tab-pane">
-                    <h3>パーソナライズ設定</h3>
-                    <div class="setting-item">
-                        <label for="team-size-select">チーム人数:</label>
-                        <select id="team-size-select">
-                            <option value="4">4人</option>
-                            <option value="5" selected>5人</option>
-                            <option value="6">6人</option>
-                        </select>
-                    </div>
-                    <div class="setting-item">
-                        <label>ロール最大数設定 (チーム内):</label>
-                        <div id="role-limit-settings"></div>
-                    </div>
-                    <div class="setting-item">
-                        <label>ヒーロー選択ルール:</label>
-                        <div id="hero-rule-settings">
-                           <div class="hero-rule-item">
-                               <input type="checkbox" id="allow-duplicates-checkbox">
-                               <label for="allow-duplicates-checkbox">チーム内のヒーロー重複を許可する</label>
-                           </div>
-                        </div>
-                    </div>
-                    <div class="setting-item">
-                        <label for="suggestion-count">提案表示数:</label>
-                        <select id="suggestion-count"><option value="1">1</option><option value="2">2</option><option value="3" selected>3</option></select>
-                    </div>
-                    <div class="setting-item">
-                        <label>ヒーロープール (使用しないヒーロー):</label>
-                        <div id="hero-pool-checklist"></div>
-                    </div>
-                    <div class="setting-item data-management">
-                        <h4>データ管理</h4>
-                        <button id="export-data-btn" class="control-btn">設定をエクスポート</button>
-                        <label for="import-data-input" class="control-btn">設定をインポート</label>
-                        <input type="file" id="import-data-input" accept=".json" style="display:none;">
-                    </div>
-                </div>
+            <!-- 【新設】カウンター関係可視化エリア -->
+            <div id="relation-view" class="hidden">
+                <div id="relation-ally-list" class="relation-list"></div>
+                <svg id="relation-svg"></svg>
+                <div id="relation-enemy-list" class="relation-list"></div>
             </div>
         </div>
 
         <!-- 右カラム: 敵チーム -->
         <div class="team-column" id="enemy-team-column">
-            <div class="team-header">
-                <h2>敵チーム</h2>
-                 <div id="map-selector-container" class="global-controls top-controls">
-                    <label for="map-selector">マップ:</label>
-                    <select id="map-selector"><option value="none">マップ未選択</option></select>
-                </div>
-            </div>
+            <div class="team-header"><h2>敵チーム</h2><div id="map-selector-container" class="global-controls top-controls"><label for="map-selector">マップ:</label><select id="map-selector"><option value="none">マップ未選択</option></select></div></div>
             <div id="enemy-team-slots" class="team-slots"></div>
-            <div id="global-analysis-container" class="global-controls bottom-controls">
-                <div class="analysis-label">全体分析</div>
-                <div id="global-suggestion-area" class="suggestion-area"></div>
-            </div>
+            <div id="global-analysis-container" class="global-controls bottom-controls"><div class="analysis-label">全体分析</div><div id="global-suggestion-area" class="suggestion-area"></div></div>
         </div>
     </div>
+    <script src="https://cdn.jsdelivr.net/npm/leader-line-new@1.1.9/leader-line.min.js"></script>
     <script src="script.js"></script>
 </body>
 </html>

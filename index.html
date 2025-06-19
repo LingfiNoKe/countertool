@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Overwatch Hero Pick Analyzer</title>
+    <title>Hero Pick Tactical Analyzer</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -41,13 +41,16 @@
                 <div id="settings-tab" class="tab-pane">
                     <h3>パーソナライズ設定</h3>
                     <div class="setting-item">
-                        <label for="suggestion-count">提案表示数 (各カテゴリ):</label>
-                        <select id="suggestion-count"><option value="1">1</option><option value="2" selected>2</option><option value="3">3</option></select>
+                        <label for="team-size-select">チーム人数:</label>
+                        <select id="team-size-select">
+                            <option value="4">4人</option>
+                            <option value="5" selected>5人</option>
+                            <option value="6">6人</option>
+                        </select>
                     </div>
                     <div class="setting-item">
                         <label>ロール最大数設定 (チーム内):</label>
                         <div id="role-limit-settings"></div>
-                        <small>※ 各ロールの最大数を5に設定すると、ロール制限のないオープンキューとして動作します。</small>
                     </div>
                     <div class="setting-item">
                         <label>ヒーロー選択ルール:</label>
@@ -57,7 +60,10 @@
                                <label for="allow-duplicates-checkbox">チーム内のヒーロー重複を許可する</label>
                            </div>
                         </div>
-                         <small>※ オフの場合、各チーム内で同じヒーローは選択できません。</small>
+                    </div>
+                    <div class="setting-item">
+                        <label for="suggestion-count">提案表示数:</label>
+                        <select id="suggestion-count"><option value="1">1</option><option value="2">2</option><option value="3" selected>3</option></select>
                     </div>
                     <div class="setting-item">
                         <label>ヒーロープール (使用しないヒーロー):</label>
@@ -83,13 +89,9 @@
                 </div>
             </div>
             <div id="enemy-team-slots" class="team-slots"></div>
-            <!-- 【変更】全体分析エリアの構造変更 -->
             <div id="global-analysis-container" class="global-controls bottom-controls">
-                <button id="global-analysis-btn" class="control-btn analysis-btn">全体</button>
-                <div id="global-suggestion-area" class="suggestion-area">
-                    <div class="suggestion high-risk"></div>
-                    <div class="suggestion low-risk"></div>
-                </div>
+                <div class="analysis-label">全体分析</div>
+                <div id="global-suggestion-area" class="suggestion-area"></div>
             </div>
         </div>
     </div>

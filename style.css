@@ -7,10 +7,10 @@ body { font-family: 'Segoe UI', 'Meiryo', sans-serif; background-color: var(--bg
 #battle-board { display: flex; justify-content: space-between; height: 98vh; gap: 1vw; }
 .team-column, #central-panel { background-color: var(--panel-bg); border: 1px solid var(--border-color); border-radius: 8px; display: flex; flex-direction: column; }
 .team-column { flex: 1; min-width: 280px; }
-#central-panel { flex: 1.8; min-width: 400px; position: relative; } /* position:relative を追加 */
+#central-panel { flex: 1.8; min-width: 400px; position: relative; }
 .team-header { padding: 10px 15px; border-bottom: 1px solid var(--border-color); text-align: center; }
 h2 { margin: 0; }
-.team-role-icons { display: flex; justify-content: center; gap: 8px; margin-top: 8px; min-height: 20px; }
+.team-role-icons { display: flex; justify-content: center; gap: 8px; margin-top: 8px; min-height: 20px; flex-wrap: wrap; }
 .role-icon { width: 20px; height: 20px; background-size: contain; background-repeat: no-repeat; background-position: center; }
 .role-icon.tank { background-image: url('https://d15f34w2p8l1cc.cloudfront.net/overwatch/7f7dd2499232042f359c4704b4b3972c3d59648a7374a491f2122615462eadf8.png'); }
 .role-icon.damage { background-image: url('https://d15f34w2p8l1cc.cloudfront.net/overwatch/5443343684b3e813a3501309f3e461a68ef3331b2c45a706f856f70a58e0a30b.png'); }
@@ -68,9 +68,12 @@ input[type="number"] { width: 60px; }
 #global-suggestion-area { padding-left: 15px; flex-grow: 1; }
 .suggestion-message { color: #aaa; font-style: italic; font-size: 0.9em; text-align: center; padding: 10px 0; }
 .hidden { display: none !important; }
-#relation-view { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: var(--panel-bg); display: flex; justify-content: space-between; padding: 20px; box-sizing: border-box; z-index: 10; }
-.relation-list { display: flex; flex-direction: column; justify-content: space-around; }
+#relation-view { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: var(--panel-bg); display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box; z-index: 10; padding: 10px;}
+.relation-header, .relation-footer { text-align: center; padding: 10px; color: var(--highlight-color); flex-shrink: 0; }
+.relation-footer { font-size: 0.9em; color: #aaa; }
+.relation-body { display: flex; justify-content: space-between; flex-grow: 1; position: relative; }
+.relation-list { display: flex; flex-direction: column; justify-content: space-around; padding: 0 10px; }
 .relation-hero { padding: 10px 15px; border-radius: 5px; font-weight: bold; margin: 5px 0; }
-#relation-ally-list .relation-hero { background-color: var(--ally-color); color: var(--bg-color); }
+#relation-ally-list .relation-hero { background-color: var(--ally-color); color: var(--bg-color); text-align: right;}
 #relation-enemy-list .relation-hero { background-color: var(--enemy-color); color: var(--bg-color); }
 #relation-svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }

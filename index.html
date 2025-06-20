@@ -46,9 +46,12 @@
                         <div class="setting-item">
                             <label for="team-size-select">チーム人数:</label>
                             <select id="team-size-select">
+                                <option value="3">3人</option>
                                 <option value="4">4人</option>
                                 <option value="5" selected>5人</option>
                                 <option value="6">6人</option>
+                                <option value="7">7人</option>
+                                <option value="8">8人</option>
                             </select>
                         </div>
                         <div class="setting-item">
@@ -66,7 +69,7 @@
                         </div>
                         <div class="setting-item">
                             <label for="suggestion-count">提案表示数:</label>
-                            <select id="suggestion-count"><option value="1">1</option><option value="2">2</option><option value="3" selected>3</option></select>
+                            <select id="suggestion-count"><option value="1">1</option><option value="2">2</option><option value="3" selected>3</option><option value="4">4</option><option value="5">5</option></select>
                         </div>
                         <div class="setting-item">
                             <label>ヒーロープール (使用しないヒーロー):</label>
@@ -83,9 +86,13 @@
             </div>
             <!-- カウンター関係可視化エリア -->
             <div id="relation-view" class="hidden">
-                <div id="relation-ally-list" class="relation-list"></div>
-                <svg id="relation-svg"></svg>
-                <div id="relation-enemy-list" class="relation-list"></div>
+                <div class="relation-header">カウンター関係図</div>
+                <div class="relation-body">
+                    <div id="relation-ally-list" class="relation-list"></div>
+                    <svg id="relation-svg"></svg>
+                    <div id="relation-enemy-list" class="relation-list"></div>
+                </div>
+                <div class="relation-footer">いずれかのヒーロースロットをクリックして変更</div>
             </div>
         </div>
 

@@ -35,7 +35,8 @@ document.addEventListener('DOMContentLoaded', () => {
             resetHeroesBtn: 'reset-heroes-btn', resetBansBtn: 'reset-bans-btn',
             exportBtn: 'export-data-btn', importInput: 'import-data-input', 
             tabInterface: 'tab-interface', relationView: 'relation-view', 
-            relationAllyList: 'relation-ally-list', relationEnemyList: 'relation-enemy-list'
+            relationAllyList: 'relation-ally-list', relationEnemyList: 'relation-enemy-list',
+            tabs: 'tabs' // 【修正】抜けていた 'tabs' を追加
         };
         for (const key in idMap) {
             elements[key] = document.getElementById(idMap[key]);
@@ -76,7 +77,7 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.roleLimitSettingsContainer.addEventListener('change', e => { if (e.target.matches('input')) { state.settings.roleLimits[e.target.dataset.role] = parseInt(e.target.value,10); saveAndReRender(); } });
         elements.allowDuplicatesCheckbox.addEventListener('change', () => { state.settings.allowTeamDuplicates = elements.allowDuplicatesCheckbox.checked; saveAndReRender(); });
         elements.heroPoolChecklist.addEventListener('change', e => { if (e.target.matches('input')) { handleHeroPoolChange(e.target); saveAndReRender(); } });
-        document.getElementById('tabs').addEventListener('click', e => { if (e.target.matches('.tab-link')) switchTab(e.target.dataset.tab); });
+        elements.tabs.addEventListener('click', e => { if (e.target.matches('.tab-link')) switchTab(e.target.dataset.tab); }); // 【修正】document.getElementByIdをelements.tabsに変更
         elements.resetAllBtn.addEventListener('click', resetAll);
         elements.resetHeroesBtn.addEventListener('click', resetHeroes);
         elements.resetBansBtn.addEventListener('click', resetBans);
@@ -86,25 +87,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- イベントハンドラ ---
-    function handleSlotClick(slot) {
-        if (isAllFilled()) {
-            toggleRelationView(false);
-        }
-        state.activeSelection = { team: slot.dataset.team, index: parseInt(slot.dataset.index, 10) };
-        renderAll();
-        switchTab('heroes');
-    }
-    /**
-     * 【修正】
-     * ヒーロー選択後、必ずactiveSelectionをnullにして選択状態を解除する。
-     */
-    function handleHeroSelection(heroId) {
-        if (!state.activeSelection) return;
-        const { team, index } = state.activeSelection;
-        state[`${team}Team`][index] = heroId; // ヒーローをセット
-        state.activeSelection = null; // 選択を解除
-        runAllAnalysesAndRender(); // 分析と再描画を実行
-    }
+    function handleSlotClick(slot) { if (isAllFilled()) { toggleRelationView(false); } state.activeSelection = { team: slot.dataset.team, index: parseInt(slot.dataset.index, 10) }; renderAll(); switchTab('heroes'); }
+    function handleHeroSelection(heroId) { if (!state.activeSelection) return; const { team, index } = state.activeSelection; state[`${team}Team`][index] = heroId; state.activeSelection = null; runAllAnalysesAndRender(); }
     function toggleBan(heroId) { const idx = state.bannedHeroes.indexOf(heroId); if (idx > -1) state.bannedHeroes.splice(idx, 1); else state.bannedHeroes.push(heroId); runAllAnalysesAndRender(); }
     function handleHeroPoolChange(cb) { const id = cb.dataset.heroId; if (cb.checked) { if (!state.settings.heroPool.includes(id)) state.settings.heroPool.push(id); } else { state.settings.heroPool = state.settings.heroPool.filter(hid => hid !== id); } }
     function saveAndReRender() { saveSettings(); runAllAnalysesAndRender(); }
@@ -113,20 +97,11 @@ document.addEventListener('DOMContentLoaded', () => {
     function resetBans() { state.bannedHeroes=[]; runAllAnalysesAndRender(); }
 
     // --- 分析と描画のメインフロー ---
-    /**
-     * 【修正】
-     * どの状況でも必ず分析を実行し、その後に表示を切り替えるようにロジックを修正。
-     */
-    function runAllAnalysesAndRender() {
-        runAllAnalyses();
-        renderAll();
-        toggleRelationView(isAllFilled());
-    }
+    function runAllAnalysesAndRender() { runAllAnalyses(); renderAll(); toggleRelationView(isAllFilled()); }
     function runAllAnalyses() {
         document.querySelectorAll('.suggestion-area').forEach(el => el.innerHTML = '');
         const isEnemyPicked = state.enemyTeam.some(Boolean);
         const myHeroId = state.allyTeam[state.myHeroSlotIndex];
-
         for (let i = 0; i < state.settings.teamSize; i++) {
             if (state.allyTeam[i]) {
                 const mode = i === state.myHeroSlotIndex ? 'Self-Analysis' : 'Ally-Support';
@@ -142,11 +117,7 @@ document.addEventListener('DOMContentLoaded', () => {
             displaySuggestions('global', runAnalysis('Strategic-Optimization'));
         }
     }
-    function runAnalysis(mode, analysisTarget) {
-        const scores = calculateReturnScores(mode, analysisTarget);
-        scores.sort((a,b) => b.return - a.return);
-        return scores;
-    }
+    function runAnalysis(mode, analysisTarget) { const scores = calculateReturnScores(mode, analysisTarget); scores.sort((a,b) => b.return - a.return); return scores; }
 
     // --- スコア計算 ---
     function calculateReturnScores(mode, analysisTarget) {
@@ -154,22 +125,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const targetRole = myHero ? myHero.role : null;
         if (!targetRole) return [];
         const myTeamForSynergy = state.allyTeam.filter(h => h && h !== myHero?.id);
-
-        return heroesData.filter(cH => 
-            !(targetRole && cH.role !== targetRole) && !state.bannedHeroes.includes(cH.id) &&
-            cH.id !== myHero?.id && (state.settings.allowTeamDuplicates || !state.allyTeam.includes(cH.id))
-        ).map(candidateHero => {
+        return heroesData.filter(cH =>  !(targetRole && cH.role !== targetRole) && !state.bannedHeroes.includes(cH.id) && cH.id !== myHero?.id && (state.settings.allowTeamDuplicates || !state.allyTeam.includes(cH.id)) ).map(candidateHero => {
             let counterScore = 0;
             switch(mode) {
-                case 'Self-Analysis': case 'Ally-Support':
-                    counterScore = analysisTarget.reduce((sum, t) => sum + getCounterScore(candidateHero.id, t), 0);
-                    break;
-                case 'Threat-Elimination':
-                    counterScore = getCounterScore(candidateHero.id, analysisTarget);
-                    break;
-                case 'Strategic-Optimization':
-                    counterScore = state.enemyTeam.filter(Boolean).reduce((sum, e) => sum + getCounterScore(candidateHero.id, e), 0);
-                    break;
+                case 'Self-Analysis': case 'Ally-Support': counterScore = analysisTarget.reduce((sum, t) => sum + getCounterScore(candidateHero.id, t), 0); break;
+                case 'Threat-Elimination': counterScore = getCounterScore(candidateHero.id, analysisTarget); break;
+                case 'Strategic-Optimization': counterScore = state.enemyTeam.filter(Boolean).reduce((sum, e) => sum + getCounterScore(candidateHero.id, e), 0); break;
             }
             const mapScore = getMapScore(candidateHero.id, state.currentMap);
             const synergyScore = myTeamForSynergy.reduce((sum, a) => sum + getSynergyScore(candidateHero.id, a), 0);
@@ -187,10 +148,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- レンダリング ---
-    function renderAll() {
-        renderSlots(); renderBans(); renderTeamRoleIcons(); renderSettings();
-        if(state.activeSelection) { renderPalettes(); renderActiveSelection(); } else { renderActiveSelection(true); }
-    }
+    function renderAll() { renderSlots(); renderBans(); renderTeamRoleIcons(); renderSettings(); if(state.activeSelection) { renderPalettes(); renderActiveSelection(); } else { renderActiveSelection(true); } }
     function renderSlots() { document.querySelectorAll('.hero-slot').forEach(slot => { const {team,index} = slot.dataset; const heroId = state[`${team}Team`][index]; if(heroId){slot.textContent=getHeroById(heroId).name;slot.classList.add('selected');}else{slot.textContent=`スロット ${parseInt(index)+1}`;slot.classList.remove('selected');}}); }
     function renderActiveSelection(forceClear = false) { document.querySelectorAll('.hero-slot.active-selection').forEach(s=>s.classList.remove('active-selection')); if(!forceClear && state.activeSelection){ const{team,index}=state.activeSelection; document.querySelector(`.hero-slot[data-team="${team}"][data-index="${index}"]`).classList.add('active-selection'); } }
     function renderPalettes() {
@@ -253,7 +211,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const endEl = document.getElementById(`rel-enemy-${j}`);
                     if (!startEl || !endEl) continue;
                     const color = score > 0 ? 'rgba(93, 156, 236, 0.7)' : 'rgba(229, 115, 115, 0.7)';
-                    const size = Math.min(Math.abs(score) * 2 + 2, 8); // 線の太さを調整
+                    const size = Math.min(Math.abs(score) * 2 + 2, 8);
                     try {
                         const line = new LeaderLine(startEl, endEl, { color, size, path: 'fluid', endPlug: 'arrow1', hide: true });
                         line.show('draw');
@@ -276,4 +234,11 @@ document.addEventListener('DOMContentLoaded', () => {
     function isAllFilled() { return state.allyTeam.every(Boolean) && state.enemyTeam.every(Boolean); }
     
     // --- パーソナライズ機能 ---
-    fu
+    function saveSettings() { localStorage.setItem('heroAnalyzerSettings', JSON.stringify(state.settings)); }
+    function loadSettings() {
+        const saved = localStorage.getItem('heroAnalyzerSettings');
+        if (saved) {
+            const parsed = JSON.parse(saved);
+            state.settings = { ...state.settings, ...parsed };
+        }
+        let needsSave=false; getUniqueRoles().forEach(r=>{if(state.settings.roleLimits[r]===undefined){sta

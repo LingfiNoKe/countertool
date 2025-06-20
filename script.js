@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     // --- グローバル変数と状態管理 ---
-    let heroesData = [], countersData = {}, mapsData = {}, synergyData = {};
+    let data = { heroes: [], counters: {}, synergy: {}, maps: {} };
     let state = {
         allyTeam: [], enemyTeam: [], bannedHeroes: [],
         currentMap: 'none', myHeroSlotIndex: 0, activeSelection: null,
@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 初期化フロー ---
     async function initializeApp() {
         cacheDOMElements();
-        await loadData();
+        await loadAllData();
         loadSettings();
         initializeAppState();
         createUI();
@@ -33,13 +33,17 @@ document.addEventListener('DOMContentLoaded', () => {
             heroPoolChecklist: 'hero-pool-checklist', mapSelector: 'map-selector', 
             globalSuggestionArea: 'global-suggestion-area', resetAllBtn: 'reset-all-btn', 
             resetHeroesBtn: 'reset-heroes-btn', copyCompositionBtn: 'copy-composition-btn',
-            exportBtn: 'export-data-btn', importInput: 'import-data-input', 
-            tabInterface: 'tab-interface', relationView: 'relation-view', 
-            relationAllyList: 'relation-ally-list', relationEnemyList: 'relation-enemy-list'
+            importInput: 'import-data-input', 
+            tabInterface: 'tab-interface', relationView: 'relation-view'
         };
         for (const key in idMap) { elements[key] = document.getElementById(idMap[key]); }
     }
-    async function loadData() { [heroesData, countersData, mapsData, synergyData] = await Promise.all([fetch('heroes.json').then(r=>r.json()), fetch('counters.json').then(r=>r.json()), fetch('maps.json').then(r=>r.json()), fetch('synergy.json').then(r=>r.json())]); }
+    async function loadAllData() {
+        [data.heroes, data.counters, data.synergy, data.maps] = await Promise.all([
+            fetch('heroes.json').then(r=>r.json()), fetch('counters.json').then(r=>r.json()),
+            fetch('synergy.json').then(r=>r.json()), fetch('maps.json').then(r=>r.json())
+        ]);
+    }
     function initializeAppState() { const size = state.settings.teamSize; state.allyTeam = Array(size).fill(null); state.enemyTeam = Array(size).fill(null); state.myHeroSlotIndex = Math.min(state.myHeroSlotIndex, size - 1); }
     function createUI() { createHeroSlots(); populatePalettes(); populateMapSelector(); populateHeroPoolChecklist(); populateRoleLimitSettings(); renderSettings(); }
     
@@ -57,9 +61,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const wrapperStyle = team === 'enemy' ? ' style="flex-direction: row-reverse;"' : '';
         return `<div class="hero-slot-wrapper" id="wrapper-${team}-${index}" data-team="${team}" data-index="${index}"${wrapperStyle}><div class="suggestion-area"></div><div class="hero-slot ${team} ${isMineClass}" id="slot-${team}-${index}" data-team="${team}" data-index="${index}">スロット ${index + 1}</div></div>`;
     }
-    function populatePalettes() { const uniqueRoles = getUniqueRoles(); [elements.heroPalette, elements.banPalette].forEach(p => { p.innerHTML = uniqueRoles.map(r => `<h3 class="role-header">${r}</h3>` + heroesData.filter(h => h.role === r).sort((a, b) => a.name.localeCompare(b.name, 'ja')).map(h => `<div class="hero-card" data-hero-id="${h.id}">${h.name}</div>`).join('')).join(''); }); }
-    function populateMapSelector() { elements.mapSelector.innerHTML = '<option value="none">マップ未選択</option>' + Object.keys(mapsData).map(id => `<option value="${id}">${mapsData[id].name}</option>`).join(''); }
-    function populateHeroPoolChecklist() { elements.heroPoolChecklist.innerHTML = [...heroesData].sort((a,b)=>a.name.localeCompare(b.name,'ja')).map(h=>`<div class="hero-pool-item"><input type="checkbox" id="pool-${h.id}" data-hero-id="${h.id}"><label for="pool-${h.id}">${h.name}</label></div>`).join('');}
+    function populatePalettes() { const uniqueRoles = getUniqueRoles(); [elements.heroPalette, elements.banPalette].forEach(p => { p.innerHTML = uniqueRoles.map(r => `<h3 class="role-header">${r}</h3>` + data.heroes.filter(h => h.role === r).sort((a, b) => a.name.localeCompare(b.name, 'ja')).map(h => `<div class="hero-card" data-hero-id="${h.id}">${h.name}</div>`).join('')).join(''); }); }
+    function populateMapSelector() { elements.mapSelector.innerHTML = '<option value="none">マップ未選択</option>' + Object.keys(data.maps).map(id => `<option value="${id}">${data.maps[id].name}</option>`).join(''); }
+    function populateHeroPoolChecklist() { elements.heroPoolChecklist.innerHTML = [...data.heroes].sort((a,b)=>a.name.localeCompare(b.name,'ja')).map(h=>`<div class="hero-pool-item"><input type="checkbox" id="pool-${h.id}" data-hero-id="${h.id}"><label for="pool-${h.id}">${h.name}</label></div>`).join('');}
     function populateRoleLimitSettings() { elements.roleLimitSettingsContainer.innerHTML = getUniqueRoles().map(r => `<div class="role-limit-item"><label for="limit-${r}">${r}:</label><input type="number" id="limit-${r}" data-role="${r}" value="${state.settings.roleLimits[r]??state.settings.teamSize}" min="0" max="${state.settings.teamSize}"></div>`).join(''); }
 
     // --- イベントリスナー ---
@@ -78,17 +82,14 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.resetAllBtn.addEventListener('click', resetAll);
         elements.resetHeroesBtn.addEventListener('click', resetHeroes);
         elements.copyCompositionBtn.addEventListener('click', copyComposition);
-        elements.exportBtn.addEventListener('click', exportData);
-        elements.importInput.addEventListener('change', importData);
-        elements.importInput.previousElementSibling.addEventListener('click', () => elements.importInput.click());
+        document.querySelector('.data-buttons').addEventListener('click', e => { if(e.target.matches('[data-file]')) handleDataManagement(e.target.dataset.file); });
     }
 
     // --- イベントハンドラ ---
     function handleSlotClick(slot) {
-        const clickedTeam = slot.dataset.team;
-        const clickedIndex = parseInt(slot.dataset.index, 10);
-
         if (elements.centralPanel.classList.contains('relation-mode')) {
+            const clickedTeam = slot.dataset.team;
+            const clickedIndex = parseInt(slot.dataset.index, 10);
             if (state.activeSelection && state.activeSelection.team === clickedTeam && state.activeSelection.index === clickedIndex) {
                 state.activeSelection = null;
                 toggleRelationView(true);
@@ -98,7 +99,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 switchTab('heroes');
             }
         } else {
-            state.activeSelection = { team: clickedTeam, index: clickedIndex };
+            state.activeSelection = { team: slot.dataset.team, index: parseInt(slot.dataset.index, 10) };
             switchTab('heroes');
         }
         renderAll();
@@ -108,13 +109,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const { team, index } = state.activeSelection;
         const teamState = state[`${team}Team`];
         
-        // 自分のロール変更時の特別処理
         if (team === 'ally' && index === state.myHeroSlotIndex && !isAllFilled()) {
             const newHeroRole = getHeroById(heroId).role;
             const currentRoleCounts = countRoles(teamState);
             const limit = state.settings.roleLimits[newHeroRole] ?? state.settings.teamSize;
             if ((currentRoleCounts[newHeroRole] || 0) >= limit) {
-                // 上限を超える場合は、自分以外の同ロールの味方をリセット
                 for (let i = 0; i < teamState.length; i++) {
                     if (i !== index && teamState[i] && getHeroById(teamState[i]).role === newHeroRole) {
                         teamState[i] = null;
@@ -133,7 +132,6 @@ document.addEventListener('DOMContentLoaded', () => {
             state.bannedHeroes.splice(idx, 1);
         } else {
             state.bannedHeroes.push(heroId);
-            // BAN指定されたヒーローを盤面から削除
             state.allyTeam = state.allyTeam.map(id => id === heroId ? null : id);
             state.enemyTeam = state.enemyTeam.map(id => id === heroId ? null : id);
         }
@@ -144,31 +142,27 @@ document.addEventListener('DOMContentLoaded', () => {
     function resetAll() { if (confirm('リセットしますか？')) { state.bannedHeroes=[]; state.currentMap='none'; resetHeroes(); } }
     function resetHeroes() { state.allyTeam.fill(null); state.enemyTeam.fill(null); runAllAnalysesAndRender(); }
     function copyComposition() {
-        const mapName = state.currentMap === 'none' ? 'マップ未選択' : mapsData[state.currentMap].name;
+        const mapName = state.currentMap === 'none' ? 'マップ未選択' : data.maps[state.currentMap].name;
         const forceDiff = calculateForceDifference(state.allyTeam, state.enemyTeam);
-        let text = `【マップ】 ${mapName}\n`;
-        text += `【チーム戦力差】: ${forceDiff.toFixed(2)}\n\n`;
-
-        text += '【味方チーム】\n';
-        getUniqueRoles().forEach(role => {
-            const heroes = state.allyTeam.map(getHeroById).filter(h => h && h.role === role);
-            if(heroes.length > 0) text += `${role}: ${heroes.map(h => h.name).join(', ')}\n`;
-        });
-        
-        text += '\n【敵チーム】\n';
-        getUniqueRoles().forEach(role => {
-            const heroes = state.enemyTeam.map(getHeroById).filter(h => h && h.role === role);
-            if(heroes.length > 0) text += `${role}: ${heroes.map(h => h.name).join(', ')}\n`;
-        });
+        let text = `【マップ】 ${mapName}\n【チーム戦力差】: ${forceDiff.toFixed(2)}\n\n`;
+        const createTeamText = (teamName, team) => {
+            text += `【${teamName}】\n`;
+            getUniqueRoles().forEach(role => {
+                const heroes = team.map(getHeroById).filter(h => h && h.role === role);
+                if(heroes.length > 0) text += `${role}: ${heroes.map(h => h.name).join(', ')}\n`;
+            });
+        };
+        createTeamText('味方チーム', state.allyTeam);
+        text += '\n';
+        createTeamText('敵チーム', state.enemyTeam);
 
         if (state.allyTeam[state.myHeroSlotIndex] && state.enemyTeam.some(Boolean)) {
             text += '\n--- 全体分析リターン内訳 ---\n';
-            const myHero = getHeroById(state.allyTeam[state.myHeroSlotIndex]);
             const suggestions = runAnalysis('Strategic-Optimization');
             suggestions.slice(0, 3).forEach(s => {
                 const candHero = getHeroById(s.heroId);
-                let breakdown = `  - vs敵: ${state.enemyTeam.filter(Boolean).map(eId => getCounterScore(s.heroId, eId).toFixed(1)).join(', ')}`;
-                let synergyScore = state.allyTeam.filter(h => h && h !== myHero.id).reduce((sum, a) => sum + getSynergyScore(s.heroId, a), 0);
+                let breakdown = `vs敵: ${state.enemyTeam.filter(Boolean).map(eId => getCounterScore(s.heroId, eId).toFixed(1)).join(', ')}`;
+                let synergyScore = state.allyTeam.filter(h => h && h !== state.allyTeam[state.myHeroSlotIndex]).reduce((sum, a) => sum + getSynergyScore(s.heroId, a), 0);
                 let mapScore = getMapScore(s.heroId, state.currentMap);
                 breakdown += ` | シナジー: ${synergyScore.toFixed(1)} | マップ: ${mapScore.toFixed(1)}`;
                 text += `${candHero.name} -> ${s.return.toFixed(2)} (${breakdown})\n`;
@@ -176,6 +170,47 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         navigator.clipboard.writeText(text).then(() => showToast());
+    }
+    function handleDataManagement(fileKey) {
+        const fileInput = elements.importInput;
+        const isExport = event.target.textContent === 'エクスポート';
+
+        if (isExport) {
+            const dataToExport = data[fileKey];
+            const blob = new Blob([JSON.stringify(dataToExport, null, 2)], {type: "application/json"});
+            const a = Object.assign(document.createElement('a'), {href: URL.createObjectURL(blob), download: `${fileKey}.json`});
+            a.click();
+            URL.revokeObjectURL(a.href);
+        } else {
+            fileInput.dataset.targetFile = fileKey;
+            fileInput.click();
+        }
+    }
+    function importData(e) {
+        const file = e.target.files[0];
+        const targetFile = e.target.dataset.targetFile;
+        if (!file || !targetFile) return;
+
+        const reader = new FileReader();
+        reader.onload = e => {
+            try {
+                const importedData = JSON.parse(e.target.result);
+                if (confirm(`${targetFile}.json をインポートして上書きしますか？`)) {
+                    data[targetFile] = importedData;
+                    if (targetFile === 'heroes') {
+                        // ヒーローデータが変更されたらUIを全面的に再構築
+                        initializeAppState();
+                        createUI();
+                    } else if (targetFile === 'maps') {
+                        populateMapSelector();
+                    }
+                    runAllAnalysesAndRender();
+                    alert('インポートが完了しました。');
+                }
+            } catch (err) { alert('ファイルの読み込みに失敗しました: ' + err); }
+        };
+        reader.readAsText(file);
+        e.target.value = ''; // 同じファイルを連続で選択できるようにする
     }
 
     // --- 分析と描画のメインフロー ---
@@ -192,14 +227,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 else displayMessage({ team: 'ally', index: i }, '明確な脅威なし');
             }
             if (myHeroId && state.enemyTeam[i]) {
-                displaySuggestions({ team: 'enemy', index: i }, runAnalysis('Threat-Elimination', state.enemyTeam[i]));
+                const suggestions = runAnalysis('Threat-Elimination', state.enemyTeam[i]);
+                if(suggestions.length === 0) displayMessage({ team: 'enemy', index: i }, '明確な提案不可');
+                else displaySuggestions({ team: 'enemy', index: i }, suggestions);
             }
         }
         if (myHeroId && state.enemyTeam.some(Boolean)) {
-            displaySuggestions('global', runAnalysis('Strategic-Optimization'));
+            const suggestions = runAnalysis('Strategic-Optimization');
+            if(suggestions.length === 0) displayMessage('global', '明確な提案不可');
+            else displaySuggestions('global', suggestions);
         }
     }
-    function runAnalysis(mode, analysisTarget) { const scores = calculateReturnScores(mode, analysisTarget); scores.sort((a,b) => b.return - a.return); return scores; }
+    function runAnalysis(mode, analysisTarget) { const scores = calculateReturnScores(mode, analysisTarget); if(scores.every(s => s.return === 0)) return []; scores.sort((a,b) => b.return - a.return); return scores; }
 
     // --- スコア計算 ---
     function calculateReturnScores(mode, analysisTarget) {
@@ -208,7 +247,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!targetRole) return [];
         const myTeamForSynergy = state.allyTeam.filter(h => h && h !== myHero?.id);
 
-        return heroesData.filter(cH => 
+        return data.heroes.filter(cH => 
             !(targetRole && cH.role !== targetRole) && !state.bannedHeroes.includes(cH.id) &&
             cH.id !== myHero?.id && (state.settings.allowTeamDuplicates || !state.allyTeam.includes(cH.id))
         ).map(candidateHero => {
@@ -288,9 +327,7 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.centralPanel.classList.toggle('relation-mode', show);
         drawnLines.forEach(line => line.remove());
         drawnLines = [];
-        if (show) {
-            setTimeout(drawRelationLines, 50);
-        }
+        if (show) { setTimeout(drawRelationLines, 50); }
     }
     function drawRelationLines() {
         const deltas = [];
@@ -303,7 +340,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 deltas.push({ i, j, delta });
             }
         }
-        
         if (deltas.length === 0) return;
         const maxDelta = Math.max(...deltas.map(d => Math.abs(d.delta)), 1);
 
@@ -323,14 +359,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- データアクセス＆ヘルパー ---
-    function getHeroById(id) { return heroesData.find(h => h.id === id); }
+    function getHeroById(id) { return data.heroes.find(h => h.id === id); }
     function getThreats(heroId) { return state.enemyTeam.filter(e => e && getCounterScore(heroId, e) < 0); }
     function getWrapper(target) { return (target === 'global') ? elements.globalSuggestionArea.parentElement : document.querySelector(`.hero-slot-wrapper[data-team="${target.team}"][data-index="${target.index}"]`); }
-    function getUniqueRoles() { return [...new Set(heroesData.map(h => h.role))].sort((a,b) => (['tank','damage','support'].indexOf(a)) - (['tank','damage','support'].indexOf(b))); }
+    function getUniqueRoles() { return [...new Set(data.heroes.map(h => h.role))].sort((a,b) => (['tank','damage','support'].indexOf(a)) - (['tank','damage','support'].indexOf(b))); }
     function countRoles(team) { return team.filter(Boolean).reduce((acc,id)=>{const r=getHeroById(id).role;acc[r]=(acc[r]||0)+1;return acc;},{});}
-    function getCounterScore(hA,hB) { if(!hA||!hB)return 0; if(countersData[hA]?.[hB]!==undefined)return countersData[hA][hB]; if(countersData[hB]?.[hA]!==undefined)return -countersData[hB][hA]; return 0;}
-    function getSynergyScore(hA,hB) { if(!hA||!hB)return 0; if(synergyData[hA]?.[hB]!==undefined)return synergyData[hA][hB]; if(synergyData[hB]?.[hA]!==undefined)return synergyData[hB][hA]; return 0;}
-    function getMapScore(id,mapId) { return mapsData[mapId]?.heroAffinity?.[id]||0; }
+    function getCounterScore(hA,hB) { if(!hA||!hB)return 0; if(data.counters[hA]?.[hB]!==undefined)return data.counters[hA][hB]; if(data.counters[hB]?.[hA]!==undefined)return -data.counters[hB][hA]; return 0;}
+    function getSynergyScore(hA,hB) { if(!hA||!hB)return 0; if(data.synergy[hA]?.[hB]!==undefined)return data.synergy[hA][hB]; if(data.synergy[hB]?.[hA]!==undefined)return data.synergy[hB][hA]; return 0;}
+    function getMapScore(id,mapId) { return data.maps[mapId]?.heroAffinity?.[id]||0; }
     function isAllFilled() { return state.allyTeam.every(Boolean) && state.enemyTeam.every(Boolean); }
     
     // --- パーソナライズ機能 ---
@@ -344,9 +380,8 @@ document.addEventListener('DOMContentLoaded', () => {
         let needsSave=false; getUniqueRoles().forEach(r=>{if(state.settings.roleLimits[r]===undefined){state.settings.roleLimits[r]=r==='tank'?1:(r==='damage'?2:2);needsSave=true;}}); if(needsSave)saveSettings();
     }
     function switchTab(tabId) { const tc=document.getElementById('tab-content'); const t=document.getElementById(`${tabId}-tab`); const tabs=document.getElementById('tabs'); if(!tc||!t)return; tabs.querySelectorAll('.tab-link').forEach(el=>el.classList.remove('active')); tc.querySelectorAll('.tab-pane').forEach(el=>el.classList.remove('active')); t.classList.add('active'); tabs.querySelector(`.tab-link[data-tab="${tabId}"]`).classList.add('active'); }
-    function exportData() { const blob=new Blob([JSON.stringify({counters:countersData,synergy:synergyData,maps:mapsData},null,2)],{type:"application/json"});const a=Object.assign(document.createElement('a'),{href:URL.createObjectURL(blob),download:'analyzer_data.json'});a.click();URL.revokeObjectURL(a.href);}
-    function importData(e) { const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=e=>{try{const d=JSON.parse(e.target.result);if(d.counters&&d.synergy&&d.maps&&confirm('データを上書きしますか？')){countersData=d.counters;synergyData=d.synergy;mapsData=d.maps;populateMapSelector();runAllAnalysesAndRender();alert('インポート完了');}else{alert('無効なファイル');}}catch(err){alert('読込失敗: '+err);}};r.readAsText(f);e.target.value='';}
-    function showToast() { const toast=document.getElementById('copy-toast'); toast.className = "toast show"; setTimeout(() => { toast.className = toast.className.replace("show", ""); }, 3000); }
+    function exportData(fileKey) { const blob=new Blob([JSON.stringify(data[fileKey],null,2)],{type:"application/json"});const a=Object.assign(document.createElement('a'),{href:URL.createObjectURL(blob),download:`${fileKey}.json`});a.click();URL.revokeObjectURL(a.href);}
+    function showToast() { const t=document.getElementById('copy-toast'); t.className = "toast show"; setTimeout(() => { t.className = t.className.replace("show", ""); }, 2000); }
 
     initializeApp();
 });

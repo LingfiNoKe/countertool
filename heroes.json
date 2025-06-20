@@ -1,7 +1,6 @@
 [
     { "id": "dva", "name": "D.Va", "role": "tank" },
     { "id": "doomfist", "name": "ドゥームフィスト", "role": "tank" },
-    { "id": "hazard", "name": "ハザード", "role": "tank" },
     { "id": "junker-queen", "name": "ジャンカー・クイーン", "role": "tank" },
     { "id": "mauga", "name": "マウガ", "role": "tank" },
     { "id": "orisa", "name": "オリーサ", "role": "tank" },
@@ -16,7 +15,6 @@
     { "id": "bastion", "name": "バスティオン", "role": "damage" },
     { "id": "cassidy", "name": "キャスディ", "role": "damage" },
     { "id": "echo", "name": "エコー", "role": "damage" },
-    { "id": "freja", "name": "フレイヤ", "role": "damage" },
     { "id": "genji", "name": "ゲンジ", "role": "damage" },
     { "id": "hanzo", "name": "ハンゾー", "role": "damage" },
     { "id": "junkrat", "name": "ジャンクラット", "role": "damage" },
@@ -35,7 +33,6 @@
     { "id": "baptiste", "name": "バティスト", "role": "support" },
     { "id": "brigitte", "name": "ブリギッテ", "role": "support" },
     { "id": "illari", "name": "イラリー", "role": "support" },
-    { "id": "juno", "name": "ジュノ", "role": "support" },
     { "id": "kiriko", "name": "キリコ", "role": "support" },
     { "id": "lifeweaver", "name": "ライフウィーバー", "role": "support" },
     { "id": "lucio", "name": "ルシオ", "role": "support" },

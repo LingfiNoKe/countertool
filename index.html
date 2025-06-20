@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hero Pick Tactical Analyzer</title>
-    <!-- 矢印描画ライブラリの読み込み -->
     <script src="https://cdn.jsdelivr.net/npm/leader-line-new@1.1.9/leader-line.min.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
@@ -46,12 +45,9 @@
                         <div class="setting-item">
                             <label for="team-size-select">チーム人数:</label>
                             <select id="team-size-select">
-                                <option value="3">3人</option>
-                                <option value="4">4人</option>
-                                <option value="5" selected>5人</option>
-                                <option value="6">6人</option>
-                                <option value="7">7人</option>
-                                <option value="8">8人</option>
+                                <option value="3">3人</option><option value="4">4人</option>
+                                <option value="5" selected>5人</option><option value="6">6人</option>
+                                <option value="7">7人</option><option value="8">8人</option>
                             </select>
                         </div>
                         <div class="setting-item">
@@ -77,8 +73,12 @@
                         </div>
                         <div class="setting-item data-management">
                             <h4>データ管理</h4>
-                            <button id="export-data-btn" class="control-btn">設定をエクスポート</button>
-                            <label for="import-data-input" class="control-btn">設定をインポート</label>
+                            <div class="data-buttons">
+                                <button class="control-btn" data-file="heroes">Heroes.json</button>
+                                <button class="control-btn" data-file="counters">Counters.json</button>
+                                <button class="control-btn" data-file="synergy">Synergy.json</button>
+                                <button class="control-btn" data-file="maps">Maps.json</button>
+                            </div>
                             <input type="file" id="import-data-input" accept=".json" style="display:none;">
                         </div>
                     </div>
@@ -114,7 +114,6 @@
         <!-- コピー成功通知 -->
         <div id="copy-toast" class="toast">コピーしました！</div>
     </div>
-    
     <script src="script.js"></script>
 </body>
 </html>

@@ -94,12 +94,16 @@ document.addEventListener('DOMContentLoaded', () => {
         renderAll();
         switchTab('heroes');
     }
+    /**
+     * 【修正】
+     * ヒーロー選択後、必ずactiveSelectionをnullにして選択状態を解除する。
+     */
     function handleHeroSelection(heroId) {
         if (!state.activeSelection) return;
         const { team, index } = state.activeSelection;
-        state[`${team}Team`][index] = heroId;
-        state.activeSelection = null;
-        runAllAnalysesAndRender();
+        state[`${team}Team`][index] = heroId; // ヒーローをセット
+        state.activeSelection = null; // 選択を解除
+        runAllAnalysesAndRender(); // 分析と再描画を実行
     }
     function toggleBan(heroId) { const idx = state.bannedHeroes.indexOf(heroId); if (idx > -1) state.bannedHeroes.splice(idx, 1); else state.bannedHeroes.push(heroId); runAllAnalysesAndRender(); }
     function handleHeroPoolChange(cb) { const id = cb.dataset.heroId; if (cb.checked) { if (!state.settings.heroPool.includes(id)) state.settings.heroPool.push(id); } else { state.settings.heroPool = state.settings.heroPool.filter(hid => hid !== id); } }
@@ -109,10 +113,14 @@ document.addEventListener('DOMContentLoaded', () => {
     function resetBans() { state.bannedHeroes=[]; runAllAnalysesAndRender(); }
 
     // --- 分析と描画のメインフロー ---
+    /**
+     * 【修正】
+     * どの状況でも必ず分析を実行し、その後に表示を切り替えるようにロジックを修正。
+     */
     function runAllAnalysesAndRender() {
         runAllAnalyses();
-        toggleRelationView(isAllFilled());
         renderAll();
+        toggleRelationView(isAllFilled());
     }
     function runAllAnalyses() {
         document.querySelectorAll('.suggestion-area').forEach(el => el.innerHTML = '');
@@ -245,7 +253,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const endEl = document.getElementById(`rel-enemy-${j}`);
                     if (!startEl || !endEl) continue;
                     const color = score > 0 ? 'rgba(93, 156, 236, 0.7)' : 'rgba(229, 115, 115, 0.7)';
-                    const size = Math.min(Math.abs(score) * 2, 6);
+                    const size = Math.min(Math.abs(score) * 2 + 2, 8); // 線の太さを調整
                     try {
                         const line = new LeaderLine(startEl, endEl, { color, size, path: 'fluid', endPlug: 'arrow1', hide: true });
                         line.show('draw');
@@ -268,6 +276,4 @@ document.addEventListener('DOMContentLoaded', () => {
     function isAllFilled() { return state.allyTeam.every(Boolean) && state.enemyTeam.every(Boolean); }
     
     // --- パーソナライズ機能 ---
-    function saveSettings() { localStorage.setItem('heroAnalyzerSettings', JSON.stringify(state.settings)); }
-    function loadSettings() {
-        const saved = localStorage.getItem('heroAnalyzerSettings');
+    fu

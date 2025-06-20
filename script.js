@@ -24,8 +24,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function cacheDOMElements() {
-        const ids = ['battle-board', 'ally-team-slots', 'enemy-team-slots', 'central-panel', 'tabs', 'hero-palette', 'ban-palette', 'banned-list', 'team-size-select', 'role-limit-settings', 'allow-duplicates-checkbox', 'suggestion-count', 'hero-pool-checklist', 'map-selector', 'global-suggestion-area', 'reset-all-btn', 'reset-heroes-btn', 'reset-bans-btn', 'export-data-btn', 'import-data-input', 'tab-interface', 'relation-view', 'relation-ally-list', 'relation-enemy-list', 'relation-svg'];
-        ids.forEach(id => elements[id] = document.getElementById(id));
+        const idMap = {
+            battleBoard: 'battle-board', allySlotsContainer: 'ally-team-slots',
+            enemySlotsContainer: 'enemy-team-slots', heroPalette: 'hero-palette',
+            banPalette: 'ban-palette', bannedList: 'banned-list', 
+            teamSizeSelect: 'team-size-select', roleLimitSettingsContainer: 'role-limit-settings',
+            allowDuplicatesCheckbox: 'allow-duplicates-checkbox', suggestionCount: 'suggestion-count',
+            heroPoolChecklist: 'hero-pool-checklist', mapSelector: 'map-selector', 
+            globalSuggestionArea: 'global-suggestion-area', resetAllBtn: 'reset-all-btn', 
+            resetHeroesBtn: 'reset-heroes-btn', resetBansBtn: 'reset-bans-btn',
+            exportBtn: 'export-data-btn', importInput: 'import-data-input', 
+            tabInterface: 'tab-interface', relationView: 'relation-view', 
+            relationAllyList: 'relation-ally-list', relationEnemyList: 'relation-enemy-list'
+        };
+        for (const key in idMap) {
+            elements[key] = document.getElementById(idMap[key]);
+        }
     }
     async function loadData() { [heroesData, countersData, mapsData, synergyData] = await Promise.all([fetch('heroes.json').then(r=>r.json()), fetch('counters.json').then(r=>r.json()), fetch('maps.json').then(r=>r.json()), fetch('synergy.json').then(r=>r.json())]); }
     function initializeAppState() { const size = state.settings.teamSize; state.allyTeam = Array(size).fill(null); state.enemyTeam = Array(size).fill(null); state.myHeroSlotIndex = Math.min(state.myHeroSlotIndex, size - 1); }
@@ -62,7 +76,7 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.roleLimitSettingsContainer.addEventListener('change', e => { if (e.target.matches('input')) { state.settings.roleLimits[e.target.dataset.role] = parseInt(e.target.value,10); saveAndReRender(); } });
         elements.allowDuplicatesCheckbox.addEventListener('change', () => { state.settings.allowTeamDuplicates = elements.allowDuplicatesCheckbox.checked; saveAndReRender(); });
         elements.heroPoolChecklist.addEventListener('change', e => { if (e.target.matches('input')) { handleHeroPoolChange(e.target); saveAndReRender(); } });
-        elements.tabs.addEventListener('click', e => { if (e.target.matches('.tab-link')) switchTab(e.target.dataset.tab); });
+        document.getElementById('tabs').addEventListener('click', e => { if (e.target.matches('.tab-link')) switchTab(e.target.dataset.tab); });
         elements.resetAllBtn.addEventListener('click', resetAll);
         elements.resetHeroesBtn.addEventListener('click', resetHeroes);
         elements.resetBansBtn.addEventListener('click', resetBans);
@@ -74,22 +88,18 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- イベントハンドラ ---
     function handleSlotClick(slot) {
         if (isAllFilled()) {
-            toggleRelationView(false); // 関係図が表示されていれば閉じる
+            toggleRelationView(false);
         }
         state.activeSelection = { team: slot.dataset.team, index: parseInt(slot.dataset.index, 10) };
-        renderAll(); // 枠の表示を更新
+        renderAll();
         switchTab('heroes');
     }
-    /**
-     * 【修正】
-     * ヒーロー選択後、必ずactiveSelectionをnullにして選択状態を解除する。
-     */
     function handleHeroSelection(heroId) {
         if (!state.activeSelection) return;
         const { team, index } = state.activeSelection;
-        state[`${team}Team`][index] = heroId; // ヒーローをセット
-        state.activeSelection = null; // 選択を解除
-        runAllAnalysesAndRender(); // 分析と再描画を実行
+        state[`${team}Team`][index] = heroId;
+        state.activeSelection = null;
+        runAllAnalysesAndRender();
     }
     function toggleBan(heroId) { const idx = state.bannedHeroes.indexOf(heroId); if (idx > -1) state.bannedHeroes.splice(idx, 1); else state.bannedHeroes.push(heroId); runAllAnalysesAndRender(); }
     function handleHeroPoolChange(cb) { const id = cb.dataset.heroId; if (cb.checked) { if (!state.settings.heroPool.includes(id)) state.settings.heroPool.push(id); } else { state.settings.heroPool = state.settings.heroPool.filter(hid => hid !== id); } }
@@ -99,10 +109,6 @@ document.addEventListener('DOMContentLoaded', () => {
     function resetBans() { state.bannedHeroes=[]; runAllAnalysesAndRender(); }
 
     // --- 分析と描画のメインフロー ---
-    /**
-     * 【修正】
-     * どの状況でも必ず分析を実行し、その後に表示を切り替えるようにロジックを修正。
-     */
     function runAllAnalysesAndRender() {
         runAllAnalyses();
         toggleRelationView(isAllFilled());
@@ -138,14 +144,12 @@ document.addEventListener('DOMContentLoaded', () => {
     function calculateReturnScores(mode, analysisTarget) {
         const myHero = getHeroById(state.allyTeam[state.myHeroSlotIndex]);
         const targetRole = myHero ? myHero.role : null;
-        if (!targetRole) return []; // 自分が未選択なら提案しない
+        if (!targetRole) return [];
         const myTeamForSynergy = state.allyTeam.filter(h => h && h !== myHero?.id);
 
         return heroesData.filter(cH => 
-            !(targetRole && cH.role !== targetRole) &&
-            !state.bannedHeroes.includes(cH.id) &&
-            cH.id !== myHero?.id &&
-            (state.settings.allowTeamDuplicates || !state.allyTeam.includes(cH.id))
+            !(targetRole && cH.role !== targetRole) && !state.bannedHeroes.includes(cH.id) &&
+            cH.id !== myHero?.id && (state.settings.allowTeamDuplicates || !state.allyTeam.includes(cH.id))
         ).map(candidateHero => {
             let counterScore = 0;
             switch(mode) {
@@ -164,17 +168,11 @@ document.addEventListener('DOMContentLoaded', () => {
             return { heroId: candidateHero.id, return: counterScore + mapScore + synergyScore };
         });
     }
-    function calculateForceDifference(allyTeam, enemyTeam) {
-        const allyPower = calculateTeamPower(allyTeam, enemyTeam);
-        const enemyPower = calculateTeamPower(enemyTeam, allyTeam);
-        return allyPower - enemyPower;
-    }
+    function calculateForceDifference(allyTeam, enemyTeam) { return calculateTeamPower(allyTeam, enemyTeam) - calculateTeamPower(enemyTeam, allyTeam); }
     function calculateTeamPower(team1, team2) {
         let synergyScore = 0;
         const validTeam1 = team1.filter(Boolean);
-        for (let i = 0; i < validTeam1.length; i++) {
-            for (let j = i + 1; j < validTeam1.length; j++) { synergyScore += getSynergyScore(validTeam1[i], validTeam1[j]); }
-        }
+        for (let i = 0; i < validTeam1.length; i++) { for (let j = i + 1; j < validTeam1.length; j++) { synergyScore += getSynergyScore(validTeam1[i], validTeam1[j]); } }
         const mapScore = validTeam1.reduce((sum, h) => sum + getMapScore(h, state.currentMap), 0);
         const counterScore = validTeam1.reduce((sum, h1) => sum + team2.filter(Boolean).reduce((s, h2) => s + getCounterScore(h1, h2), 0), 0);
         return synergyScore + mapScore + counterScore;
@@ -186,13 +184,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if(state.activeSelection) { renderPalettes(); renderActiveSelection(); } else { renderActiveSelection(true); }
     }
     function renderSlots() { document.querySelectorAll('.hero-slot').forEach(slot => { const {team,index} = slot.dataset; const heroId = state[`${team}Team`][index]; if(heroId){slot.textContent=getHeroById(heroId).name;slot.classList.add('selected');}else{slot.textContent=`スロット ${parseInt(index)+1}`;slot.classList.remove('selected');}}); }
-    function renderActiveSelection(forceClear = false) {
-        document.querySelectorAll('.hero-slot.active-selection').forEach(s=>s.classList.remove('active-selection'));
-        if(!forceClear && state.activeSelection){
-            const{team,index}=state.activeSelection;
-            document.querySelector(`.hero-slot[data-team="${team}"][data-index="${index}"]`).classList.add('active-selection');
-        }
-    }
+    function renderActiveSelection(forceClear = false) { document.querySelectorAll('.hero-slot.active-selection').forEach(s=>s.classList.remove('active-selection')); if(!forceClear && state.activeSelection){ const{team,index}=state.activeSelection; document.querySelector(`.hero-slot[data-team="${team}"][data-index="${index}"]`).classList.add('active-selection'); } }
     function renderPalettes() {
         if (!state.activeSelection) return;
         const {team,index} = state.activeSelection;
@@ -239,7 +231,6 @@ document.addEventListener('DOMContentLoaded', () => {
         drawnLines.forEach(line => line.remove());
         drawnLines = [];
         if (show) {
-            // DOMの描画が完了してから線を描くために少し遅延させる
             setTimeout(drawRelationLines, 50);
         }
     }
@@ -252,7 +243,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (Math.abs(score) > 0.5) {
                     const startEl = document.getElementById(`rel-ally-${i}`);
                     const endEl = document.getElementById(`rel-enemy-${j}`);
-                    if (!startEl || !endEl) continue; // 要素が見つからない場合はスキップ
+                    if (!startEl || !endEl) continue;
                     const color = score > 0 ? 'rgba(93, 156, 236, 0.7)' : 'rgba(229, 115, 115, 0.7)';
                     const size = Math.min(Math.abs(score) * 2, 6);
                     try {
@@ -280,15 +271,3 @@ document.addEventListener('DOMContentLoaded', () => {
     function saveSettings() { localStorage.setItem('heroAnalyzerSettings', JSON.stringify(state.settings)); }
     function loadSettings() {
         const saved = localStorage.getItem('heroAnalyzerSettings');
-        if (saved) {
-            const parsed = JSON.parse(saved);
-            state.settings = { ...state.settings, ...parsed };
-        }
-        let needsSave=false; getUniqueRoles().forEach(r=>{if(state.settings.roleLimits[r]===undefined){state.settings.roleLimits[r]=r==='tank'?1:(r==='damage'?2:2);needsSave=true;}}); if(needsSave)saveSettings();
-    }
-    function switchTab(tabId) { document.querySelectorAll('.tab-pane,.tab-link').forEach(el=>el.classList.remove('active')); document.getElementById(`${tabId}-tab`).classList.add('active'); document.querySelector(`.tab-link[data-tab="${tabId}"]`).classList.add('active'); }
-    function exportData() { const blob=new Blob([JSON.stringify({counters:countersData,synergy:synergyData,maps:mapsData},null,2)],{type:"application/json"});const a=Object.assign(document.createElement('a'),{href:URL.createObjectURL(blob),download:'analyzer_data.json'});a.click();URL.revokeObjectURL(a.href);}
-    function importData(e) { const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=e=>{try{const d=JSON.parse(e.target.result);if(d.counters&&d.synergy&&d.maps&&confirm('データを上書きしますか？')){countersData=d.counters;synergyData=d.synergy;mapsData=d.maps;populateMapSelector();runAllAnalysesAndRender();alert('インポート完了');}else{alert('無効なファイル');}}catch(err){alert('読込失敗: '+err);}};r.readAsText(f);e.target.value='';}
-
-    initializeApp();
-});

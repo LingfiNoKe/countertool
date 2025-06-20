@@ -1,119 +1,44 @@
 {
-    "dva": {
-        "zarya": -2,
-        "symmetra": -1.5,
-        "roadhog": -1,
-        "winston": 1
-    },
-    "doomfist": {
-        "sombra": -2,
-        "orisa": -1.5,
-        "pharah": -1,
-        "cassidy": -1,
-        "zenyatta": 1
-    },
-    "junker-queen": {
-        "ana": -2,
-        "ashe": -1,
-        "widowmaker": -1,
-        "reaper": 1
-    },
-    "ramattra": {
-        "pharah": -1.5,
-        "sombra": -1,
-        "ana": -1
-    },
-    "reinhardt": {
-        "bastion": -2,
-        "pharah": -1.5,
-        "sombra": -1.5,
-        "junkrat": -1
-    },
-    "winston": {
-        "reaper": -2,
-        "bastion": -2,
-        "roadhog": -1.5,
-        "genji": 1.5,
-        "widowmaker": 1
-    },
-    "wrecking-ball": {
-        "sombra": -2,
-        "mei": -1.5,
-        "ana": -1.5,
-        "brigitte": -1
-    },
-    "zarya": {
-        "pharah": -1.5,
-        "echo": -1.5,
-        "reinhardt": 1
-    },
-    "genji": {
-        "winston": -2,
-        "moira": -2,
-        "zarya": -1.5,
-        "symmetra": -1.5,
-        "ana": 1.5,
-        "zenyatta": 1.5
-    },
-    "pharah": {
-        "widowmaker": -2,
-        "ashe": -2,
-        "cassidy": -2,
-        "soldier-76": -1.5,
-        "dva": -1.5,
-        "junkrat": 1.5,
-        "reaper": 1
-    },
-    "reaper": {
-        "pharah": -1.5,
-        "echo": -1.5,
-        "junkrat": -1,
-        "winston": 2,
-        "roadhog": 1
-    },
-    "sombra": {
-        "kiriko": -1,
-        "hanzo": 1,
-        "widowmaker": 1
-    },
-    "tracer": {
-        "torbjorn": -2,
-        "cassidy": -1.5,
-        "winston": -1
-    },
-    "widowmaker": {
-        "winston": -2,
-        "genji": -2,
-        "dva": -1.5,
-        "sombra": -1,
-        "pharah": 1.5,
-        "bastion": 1.5
-    },
-    "ana": {
-        "genji": -2,
-        "sombra": -2,
-        "tracer": -1.5,
-        "dva": -1.5
-    },
-    "brigitte": {
-        "pharah": -2,
-        "junkrat": -1.5,
-        "tracer": 1.5,
-        "genji": 1
-    },
-    "lucio": {
-        "mei": -1,
-        "pharah": -1,
-        "symmetra": -1
-    },
-    "mercy": {
-        "sombra": -1.5,
-        "widowmaker": -1.5,
-        "cassidy": -1.5
-    },
-    "zenyatta": {
-        "sombra": -2,
-        "widowmaker": -2,
-        "tracer": -1.5
-    }
+    "dva": { "winston": 1.5, "widowmaker": 1.5, "zarya": -2, "symmetra": -1.5, "roadhog": -1, "mei": -1 },
+    "doomfist": { "ana": 1.5, "zenyatta": 1.5, "sombra": -2, "orisa": -1.5, "cassidy": -1, "roadhog": -1 },
+    "junker-queen": { "reinhardt": 1.5, "reaper": 1, "ana": -2, "kiriko": -1.5, "ashe": -1, "pharah": -1 },
+    "mauga": { "reinhardt": 1, "zarya": -2, "ana": -2, "sigma": -1.5, "bastion": -1 },
+    "orisa": { "doomfist": 1.5, "reinhardt": 1, "zarya": -1.5, "zenyatta": -1.5, "bastion": -1 },
+    "ramattra": { "reinhardt": 1.5, "winston": 1, "pharah": -2, "sombra": -1.5, "ana": -1, "bastion": -1 },
+    "reinhardt": { "ana": 1, "lucio": 1, "bastion": -2, "pharah": -1.5, "sombra": -1.5, "junkrat": -1.5 },
+    "roadhog": { "winston": 1.5, "wrecking-ball": 1.5, "ana": -2.5, "orisa": -1.5, "reaper": -1, "kiriko": -1 },
+    "sigma": { "pharah": 1.5, "ashe": 1, "sombra": -1.5, "ramattra": -1.5, "junker-queen": -1, "zarya": -1 },
+    "winston": { "genji": 1.5, "widowmaker": 1.5, "zenyatta": 1, "reaper": -2, "bastion": -2, "roadhog": -1.5, "dva": -1.5 },
+    "wrecking-ball": { "widowmaker": 1.5, "ashe": 1, "sombra": -2.5, "mei": -2, "ana": -1.5, "brigitte": -1, "cassidy": -1 },
+    "zarya": { "dva": 2, "orisa": 1.5, "genji": 1, "pharah": -1.5, "echo": -1.5, "bastion": -1, "sombra": -1 },
+    
+    "ashe": { "pharah": 1.5, "mercy": 1, "genji": -1.5, "dva": -1.5, "wrecking-ball": -1 },
+    "bastion": { "reinhardt": 2, "orisa": 1.5, "mauga": 1.5, "ana": -2, "genji": -1.5, "hanzo": -1.5, "sigma": -1 },
+    "cassidy": { "tracer": 1.5, "pharah": 1, "doomfist": 1, "widowmaker": -1.5, "ashe": -1 },
+    "echo": { "reinhardt": 1.5, "mercy": 1, "cassidy": -2, "ashe": -2, "torbjorn": -1 },
+    "genji": { "ana": 2, "zenyatta": 1.5, "winston": -2, "moira": -2, "zarya": -1.5, "symmetra": -1.5, "mei": -1 },
+    "hanzo": { "bastion": 1.5, "torbjorn": 1, "genji": -1.5, "tracer": -1.5, "winston": -1, "dva": -1 },
+    "junkrat": { "reinhardt": 1.5, "brigitte": 1.5, "pharah": -2, "echo": -1.5, "zarya": -1 },
+    "mei": { "wrecking-ball": 2, "dva": 1.5, "lucio": 1, "pharah": -1.5, "zarya": -1 },
+    "pharah": { "junkrat": 2, "reaper": 1.5, "brigitte": 1.5, "symmetra": 1, "widowmaker": -2.5, "ashe": -2, "cassidy": -2 },
+    "reaper": { "winston": 2, "roadhog": 1.5, "zenyatta": 1, "pharah": -2, "echo": -1.5, "junkrat": -1 },
+    "sojourn": { "pharah": 1, "winston": -1.5, "genji": -1.5, "tracer": -1 },
+    "soldier-76": { "pharah": 1.5, "echo": 1, "dva": -1, "sigma": -1 },
+    "sombra": { "wrecking-ball": 2, "doomfist": 2, "sigma": 1.5, "zenyatta": 1.5, "hanzo": -1, "mei": -1, "kiriko": -1 },
+    "symmetra": { "reinhardt": 2, "dva": 1.5, "pharah": -1.5, "winston": -1, "echo": -1 },
+    "torbjorn": { "genji": 1.5, "tracer": 1.5, "winston": 1, "pharah": -1.5, "zarya": -1 },
+    "tracer": { "zenyatta": 1.5, "ana": 1, "torbjorn": -2, "cassidy": -1.5, "mei": -1, "brigitte": -1 },
+    "venture": { "widowmaker": 1.5, "ana": 1, "pharah": -2, "echo": -1.5 },
+    "widowmaker": { "pharah": 2, "zenyatta": 1.5, "winston": -2, "genji": -2, "dva": -1.5, "sombra": -1.5 },
+
+    "ana": { "roadhog": 2, "mauga": 2, "junker-queen": 1.5, "genji": -2.5, "sombra": -2, "tracer": -2, "winston": -1.5 },
+    "baptiste": { "reaper": 1, "mauga": -1, "dva": -1 },
+    "brigitte": { "wrecking-ball": 1.5, "tracer": 1.5, "genji": 1, "pharah": -2, "junkrat": -1.5, "ramattra": -1 },
+    "illari": { "winston": 1, "pharah": -1.5, "sombra": -1 },
+    "kiriko": { "ana": 2, "junker-queen": 1.5, "sombra": -1.5, "winston": -1.5, "mei": -1 },
+    "lifeweaver": { "reinhardt": 1.5, "roadhog": 1, "sombra": -2, "genji": -1 },
+    "lucio": { "reinhardt": 1.5, "mei": -1.5, "pharah": -1, "symmetra": -1, "winston": -1 },
+    "mercy": { "pharah": 2, "ashe": 1.5, "sombra": -2, "genji": -1.5, "tracer": -1.5 },
+    "moira": { "genji": 2, "sombra": 1, "dva": -1.5, "ana": -1 },
+    "zenyatta": { "roadhog": 2, "orisa": 1.5, "sombra": -2, "widowmaker": -2, "tracer": -1.5, "genji": -1 }
 }

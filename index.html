@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hero Pick Tactical Analyzer</title>
+    <!-- 矢印描画ライブラリの読み込み -->
     <script src="https://cdn.jsdelivr.net/npm/leader-line-new@1.1.9/leader-line.min.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
@@ -73,12 +74,10 @@
                         </div>
                         <div class="setting-item data-management">
                             <h4>データ管理</h4>
-                            <div class="data-buttons">
-                                <button class="control-btn" data-file="heroes">Heroes.json</button>
-                                <button class="control-btn" data-file="counters">Counters.json</button>
-                                <button class="control-btn" data-file="synergy">Synergy.json</button>
-                                <button class="control-btn" data-file="maps">Maps.json</button>
-                            </div>
+                            <div class="data-row" data-file="heroes"><span class="data-label">heroes.json:</span><div class="data-buttons"><button class="control-btn import">インポート</button><button class="control-btn export">エクスポート</button></div></div>
+                            <div class="data-row" data-file="counters"><span class="data-label">counters.json:</span><div class="data-buttons"><button class="control-btn import">インポート</button><button class="control-btn export">エクスポート</button></div></div>
+                            <div class="data-row" data-file="synergy"><span class="data-label">synergy.json:</span><div class="data-buttons"><button class="control-btn import">インポート</button><button class="control-btn export">エクスポート</button></div></div>
+                            <div class="data-row" data-file="maps"><span class="data-label">maps.json:</span><div class="data-buttons"><button class="control-btn import">インポート</button><button class="control-btn export">エクスポート</button></div></div>
                             <input type="file" id="import-data-input" accept=".json" style="display:none;">
                         </div>
                     </div>
@@ -114,6 +113,7 @@
         <!-- コピー成功通知 -->
         <div id="copy-toast" class="toast">コピーしました！</div>
     </div>
+    
     <script src="script.js"></script>
 </body>
 </html>

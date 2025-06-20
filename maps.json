@@ -1,27 +1,30 @@
 {
-    "kings-row": {
-        "name": "King's Row",
-        "heroAffinity": {
-            "reinhardt": 1.5,
-            "reaper": 1,
-            "cassidy": 0.5
-        }
-    },
-    "junkertown": {
-        "name": "Junkertown",
-        "heroAffinity": {
-            "pharah": 1,
-            "mercy": 1,
-            "ana": 0.5,
-            "reinhardt": -1
-        }
-    },
-    "lijiang-tower": {
-        "name": "Lijiang Tower",
-        "heroAffinity": {
-            "lucio": 1.5,
-            "winston": 1,
-            "pharah": 1
-        }
-    }
+    "busan": { "name": "Busan", "heroAffinity": {} },
+    "ilios": { "name": "Ilios", "heroAffinity": {} },
+    "lijiang-tower": { "name": "Lijiang Tower", "heroAffinity": { "lucio": 1.5, "winston": 1, "pharah": 1, "roadhog": 1, "wrecking-ball": 1 } },
+    "nepal": { "name": "Nepal", "heroAffinity": {} },
+    "samoa": { "name": "Samoa", "heroAffinity": {} },
+    "antarctic-peninsula": { "name": "Antarctic Peninsula", "heroAffinity": {} },
+    "circuit-royal": { "name": "Circuit Royal", "heroAffinity": {} },
+    "dorado": { "name": "Dorado", "heroAffinity": {} },
+    "route-66": { "name": "Route 66", "heroAffinity": {} },
+    "junkertown": { "name": "Junkertown", "heroAffinity": { "pharah": 1, "mercy": 1, "widowmaker": 1 } },
+    "rialto": { "name": "Rialto", "heroAffinity": {} },
+    "havana": { "name": "Havana", "heroAffinity": {} },
+    "shambali-monastery": { "name": "Shambali Monastery", "heroAffinity": {} },
+    "watchpoint-gibraltar": { "name": "Watchpoint: Gibraltar", "heroAffinity": {} },
+    "blizzard-world": { "name": "Blizzard World", "heroAffinity": {} },
+    "eichenwalde": { "name": "Eichenwalde", "heroAffinity": {} },
+    "hollywood": { "name": "Hollywood", "heroAffinity": {} },
+    "kings-row": { "name": "King's Row", "heroAffinity": { "reinhardt": 1.5, "reaper": 1, "cassidy": 0.5 } },
+    "midtown": { "name": "Midtown", "heroAffinity": {} },
+    "numbani": { "name": "Numbani", "heroAffinity": {} },
+    "paraiso": { "name": "Paraíso", "heroAffinity": {} },
+    "colosseo": { "name": "Colosseo", "heroAffinity": {} },
+    "esperanca": { "name": "Esperança", "heroAffinity": {} },
+    "new-queen-street": { "name": "New Queen Street", "heroAffinity": {} },
+    "suravasa": { "name": "Suravasa", "heroAffinity": {} },
+    "hanaoka": { "name": "Hanaoka", "heroAffinity": {} },
+    "runasapi": { "name": "Runasapi", "heroAffinity": {} },
+    "peru": { "name": "Peru", "heroAffinity": {} }
 }

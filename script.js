@@ -68,7 +68,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- イベントリスナー ---
     function setupEventListeners() {
-        elements.battleBoard.addEventListener('click', e => { if (e.target.closest('.hero-slot')) handleSlotClick(e.target.closest('.hero-slot')); });
+        document.getElementById('battle-board').addEventListener('click', e => { if (e.target.closest('.hero-slot')) handleSlotClick(e.target.closest('.hero-slot')); });
         elements.heroPalette.addEventListener('click', e => { if (e.target.matches('.hero-card:not(.banned,.picked,.role-locked)')) handleHeroSelection(e.target.dataset.heroId); });
         elements.banPalette.addEventListener('click', e => { if (e.target.matches('.hero-card')) toggleBan(e.target.dataset.heroId); });
         elements.bannedList.addEventListener('click', e => { if (e.target.matches('.banned-hero-item')) toggleBan(e.target.dataset.heroId); });
@@ -81,8 +81,8 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('tabs').addEventListener('click', e => { if (e.target.matches('.tab-link')) switchTab(e.target.dataset.tab); });
         elements.resetAllBtn.addEventListener('click', resetAll);
         elements.resetHeroesBtn.addEventListener('click', resetHeroes);
-        elements.copyCompositionBtn.addEventListener('click', copyComposition);
-        document.querySelector('.data-buttons').addEventListener('click', e => { if(e.target.matches('[data-file]')) handleDataManagement(e.target.dataset.file); });
+        document.querySelector('.data-management').addEventListener('click', e => { if(e.target.matches('button.control-btn')) handleDataManagement(e); });
+        elements.importInput.addEventListener('change', importData);
     }
 
     // --- イベントハンドラ ---
@@ -111,7 +111,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (team === 'ally' && index === state.myHeroSlotIndex && !isAllFilled()) {
             const newHeroRole = getHeroById(heroId).role;
-            const currentRoleCounts = countRoles(teamState);
+            const currentRoleCounts = countRoles(teamState, index);
             const limit = state.settings.roleLimits[newHeroRole] ?? state.settings.teamSize;
             if ((currentRoleCounts[newHeroRole] || 0) >= limit) {
                 for (let i = 0; i < teamState.length; i++) {
@@ -169,11 +169,11 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
         
-        navigator.clipboard.writeText(text).then(() => showToast());
+        navigator.clipboard.writeText(text).then(() => showToast('構成をコピーしました！'));
     }
-    function handleDataManagement(fileKey) {
-        const fileInput = elements.importInput;
-        const isExport = event.target.textContent === 'エクスポート';
+    function handleDataManagement(button) {
+        const fileKey = button.parentElement.parentElement.dataset.file;
+        const isExport = button.classList.contains('export');
 
         if (isExport) {
             const dataToExport = data[fileKey];
@@ -182,8 +182,8 @@ document.addEventListener('DOMContentLoaded', () => {
             a.click();
             URL.revokeObjectURL(a.href);
         } else {
-            fileInput.dataset.targetFile = fileKey;
-            fileInput.click();
+            elements.importInput.dataset.targetFile = fileKey;
+            elements.importInput.click();
         }
     }
     function importData(e) {
@@ -198,19 +198,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (confirm(`${targetFile}.json をインポートして上書きしますか？`)) {
                     data[targetFile] = importedData;
                     if (targetFile === 'heroes') {
-                        // ヒーローデータが変更されたらUIを全面的に再構築
                         initializeAppState();
                         createUI();
                     } else if (targetFile === 'maps') {
                         populateMapSelector();
                     }
                     runAllAnalysesAndRender();
-                    alert('インポートが完了しました。');
+                    showToast(`${targetFile}.json をインポートしました`);
                 }
             } catch (err) { alert('ファイルの読み込みに失敗しました: ' + err); }
         };
         reader.readAsText(file);
-        e.target.value = ''; // 同じファイルを連続で選択できるようにする
+        e.target.value = '';
     }
 
     // --- 分析と描画のメインフロー ---
@@ -223,8 +222,13 @@ document.addEventListener('DOMContentLoaded', () => {
             if (state.allyTeam[i]) {
                 const mode = i === state.myHeroSlotIndex ? 'Self-Analysis' : 'Ally-Support';
                 const threats = getThreats(state.allyTeam[i]);
-                if (state.enemyTeam.some(Boolean) && threats.length > 0) displaySuggestions({ team: 'ally', index: i }, runAnalysis(mode, threats));
-                else displayMessage({ team: 'ally', index: i }, '明確な脅威なし');
+                if (state.enemyTeam.some(Boolean) && threats.length > 0) {
+                    const suggestions = runAnalysis(mode, threats);
+                    if (suggestions.length === 0) displayMessage({ team: 'ally', index: i }, '明確な提案不可');
+                    else displaySuggestions({ team: 'ally', index: i }, suggestions);
+                } else {
+                    displayMessage({ team: 'ally', index: i }, '明確な脅威なし');
+                }
             }
             if (myHeroId && state.enemyTeam[i]) {
                 const suggestions = runAnalysis('Threat-Elimination', state.enemyTeam[i]);
@@ -238,7 +242,7 @@ document.addEventListener('DOMContentLoaded', () => {
             else displaySuggestions('global', suggestions);
         }
     }
-    function runAnalysis(mode, analysisTarget) { const scores = calculateReturnScores(mode, analysisTarget); if(scores.every(s => s.return === 0)) return []; scores.sort((a,b) => b.return - a.return); return scores; }
+    function runAnalysis(mode, analysisTarget) { const scores = calculateReturnScores(mode, analysisTarget); if(scores.length > 0 && scores.every(s => s.return === 0)) return []; scores.sort((a,b) => b.return - a.return); return scores; }
 
     // --- スコア計算 ---
     function calculateReturnScores(mode, analysisTarget) {
@@ -287,7 +291,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const {team,index} = state.activeSelection;
         const targetTeam = state[`${team}Team`];
         const pickedInTeam = state.settings.allowTeamDuplicates ? [] : targetTeam.filter(Boolean);
-        const roleCounts = countRoles(targetTeam);
+        const roleCounts = countRoles(targetTeam, team === 'ally' ? index : -1);
         const currentHero = getHeroById(targetTeam[index]);
         document.querySelectorAll('#hero-palette .hero-card').forEach(card => {
             const hero = getHeroById(card.dataset.heroId);
@@ -298,7 +302,6 @@ document.addEventListener('DOMContentLoaded', () => {
             let isLocked = (roleCounts[hero.role] || 0) >= limit;
             if (team === 'ally' && index === state.myHeroSlotIndex && !isAllFilled()) { isLocked = false; }
             else if (isLocked && currentHero && hero.role === currentHero.role) { isLocked = false; }
-            if (!currentHero && isLocked) { isLocked = true; }
             if (isLocked) card.classList.add('role-locked');
         });
     }
@@ -363,7 +366,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function getThreats(heroId) { return state.enemyTeam.filter(e => e && getCounterScore(heroId, e) < 0); }
     function getWrapper(target) { return (target === 'global') ? elements.globalSuggestionArea.parentElement : document.querySelector(`.hero-slot-wrapper[data-team="${target.team}"][data-index="${target.index}"]`); }
     function getUniqueRoles() { return [...new Set(data.heroes.map(h => h.role))].sort((a,b) => (['tank','damage','support'].indexOf(a)) - (['tank','damage','support'].indexOf(b))); }
-    function countRoles(team) { return team.filter(Boolean).reduce((acc,id)=>{const r=getHeroById(id).role;acc[r]=(acc[r]||0)+1;return acc;},{});}
+    function countRoles(team, excludeIndex = -1) { return team.map((id,i) => i === excludeIndex ? null : id).filter(Boolean).reduce((acc,id)=>{const r=getHeroById(id).role;acc[r]=(acc[r]||0)+1;return acc;},{});}
     function getCounterScore(hA,hB) { if(!hA||!hB)return 0; if(data.counters[hA]?.[hB]!==undefined)return data.counters[hA][hB]; if(data.counters[hB]?.[hA]!==undefined)return -data.counters[hB][hA]; return 0;}
     function getSynergyScore(hA,hB) { if(!hA||!hB)return 0; if(data.synergy[hA]?.[hB]!==undefined)return data.synergy[hA][hB]; if(data.synergy[hB]?.[hA]!==undefined)return data.synergy[hB][hA]; return 0;}
     function getMapScore(id,mapId) { return data.maps[mapId]?.heroAffinity?.[id]||0; }
@@ -380,8 +383,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let needsSave=false; getUniqueRoles().forEach(r=>{if(state.settings.roleLimits[r]===undefined){state.settings.roleLimits[r]=r==='tank'?1:(r==='damage'?2:2);needsSave=true;}}); if(needsSave)saveSettings();
     }
     function switchTab(tabId) { const tc=document.getElementById('tab-content'); const t=document.getElementById(`${tabId}-tab`); const tabs=document.getElementById('tabs'); if(!tc||!t)return; tabs.querySelectorAll('.tab-link').forEach(el=>el.classList.remove('active')); tc.querySelectorAll('.tab-pane').forEach(el=>el.classList.remove('active')); t.classList.add('active'); tabs.querySelector(`.tab-link[data-tab="${tabId}"]`).classList.add('active'); }
-    function exportData(fileKey) { const blob=new Blob([JSON.stringify(data[fileKey],null,2)],{type:"application/json"});const a=Object.assign(document.createElement('a'),{href:URL.createObjectURL(blob),download:`${fileKey}.json`});a.click();URL.revokeObjectURL(a.href);}
-    function showToast() { const t=document.getElementById('copy-toast'); t.className = "toast show"; setTimeout(() => { t.className = t.className.replace("show", ""); }, 2000); }
+    function showToast(message) { const t=document.getElementById('copy-toast'); t.textContent = message; t.className = "toast show"; setTimeout(() => { t.className = t.className.replace("show", ""); }, 2000); }
 
     initializeApp();
 });

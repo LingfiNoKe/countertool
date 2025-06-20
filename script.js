@@ -38,12 +38,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         for (const key in idMap) { elements[key] = document.getElementById(idMap[key]); }
     }
-    async function loadAllData() {
-        [data.heroes, data.counters, data.synergy, data.maps] = await Promise.all([
-            fetch('heroes.json').then(r=>r.json()), fetch('counters.json').then(r=>r.json()),
-            fetch('synergy.json').then(r=>r.json()), fetch('maps.json').then(r=>r.json())
-        ]);
-    }
+    async function loadAllData() { [data.heroes, data.counters, data.synergy, data.maps] = await Promise.all([fetch('heroes.json').then(r=>r.json()), fetch('counters.json').then(r=>r.json()), fetch('synergy.json').then(r=>r.json()), fetch('maps.json').then(r=>r.json())]); }
     function initializeAppState() { const size = state.settings.teamSize; state.allyTeam = Array(size).fill(null); state.enemyTeam = Array(size).fill(null); state.myHeroSlotIndex = Math.min(state.myHeroSlotIndex, size - 1); }
     function createUI() { createHeroSlots(); populatePalettes(); populateMapSelector(); populateHeroPoolChecklist(); populateRoleLimitSettings(); renderSettings(); }
     
@@ -81,7 +76,8 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('tabs').addEventListener('click', e => { if (e.target.matches('.tab-link')) switchTab(e.target.dataset.tab); });
         elements.resetAllBtn.addEventListener('click', resetAll);
         elements.resetHeroesBtn.addEventListener('click', resetHeroes);
-        document.querySelector('.data-management').addEventListener('click', e => { if(e.target.matches('button.control-btn')) handleDataManagement(e); });
+        elements.copyCompositionBtn.addEventListener('click', copyComposition);
+        document.querySelector('.data-management').addEventListener('click', e => { if(e.target.matches('button.control-btn')) handleDataManagement(e.target); });
         elements.importInput.addEventListener('change', importData);
     }
 
@@ -172,7 +168,7 @@ document.addEventListener('DOMContentLoaded', () => {
         navigator.clipboard.writeText(text).then(() => showToast('構成をコピーしました！'));
     }
     function handleDataManagement(button) {
-        const fileKey = button.parentElement.parentElement.dataset.file;
+        const fileKey = button.closest('.data-row').dataset.file;
         const isExport = button.classList.contains('export');
 
         if (isExport) {
@@ -224,25 +220,41 @@ document.addEventListener('DOMContentLoaded', () => {
                 const threats = getThreats(state.allyTeam[i]);
                 if (state.enemyTeam.some(Boolean) && threats.length > 0) {
                     const suggestions = runAnalysis(mode, threats);
-                    if (suggestions.length === 0) displayMessage({ team: 'ally', index: i }, '明確な提案不可');
-                    else displaySuggestions({ team: 'ally', index: i }, suggestions);
+                    displaySuggestions({ team: 'ally', index: i }, suggestions);
                 } else {
                     displayMessage({ team: 'ally', index: i }, '明確な脅威なし');
                 }
             }
             if (myHeroId && state.enemyTeam[i]) {
                 const suggestions = runAnalysis('Threat-Elimination', state.enemyTeam[i]);
-                if(suggestions.length === 0) displayMessage({ team: 'enemy', index: i }, '明確な提案不可');
-                else displaySuggestions({ team: 'enemy', index: i }, suggestions);
+                displaySuggestions({ team: 'enemy', index: i }, suggestions);
             }
         }
         if (myHeroId && state.enemyTeam.some(Boolean)) {
             const suggestions = runAnalysis('Strategic-Optimization');
-            if(suggestions.length === 0) displayMessage('global', '明確な提案不可');
-            else displaySuggestions('global', suggestions);
+            displaySuggestions('global', suggestions);
         }
     }
-    function runAnalysis(mode, analysisTarget) { const scores = calculateReturnScores(mode, analysisTarget); if(scores.length > 0 && scores.every(s => s.return === 0)) return []; scores.sort((a,b) => b.return - a.return); return scores; }
+    function runAnalysis(mode, analysisTarget) {
+        let scores = calculateReturnScores(mode, analysisTarget);
+        if (scores.length > 0 && scores.every(s => s.return === 0)) {
+            return []; // 全員0点なら提案不可
+        }
+        
+        // 提案にDelta（戦力差スコアの変動）を追加
+        const scoreBefore = calculateForceDifference(state.allyTeam, state.enemyTeam);
+        scores = scores.map(s => {
+            const tempAllyTeam = [...state.allyTeam];
+            tempAllyTeam[state.myHeroSlotIndex] = s.heroId;
+            const scoreAfter = calculateForceDifference(tempAllyTeam, state.enemyTeam);
+            s.delta = scoreAfter - scoreBefore;
+            return s;
+        });
+
+        // ソート（第1キー：リターン, 第2キー：Delta）
+        scores.sort((a, b) => (b.return - a.return) || (b.delta - a.delta));
+        return scores;
+    }
 
     // --- スコア計算 ---
     function calculateReturnScores(mode, analysisTarget) {
@@ -310,14 +322,10 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderSettings() { elements.teamSizeSelect.value = state.settings.teamSize; elements.suggestionCount.value = state.settings.suggestionCount; elements.allowDuplicatesCheckbox.checked = state.settings.allowTeamDuplicates; document.querySelectorAll('#hero-pool-checklist input').forEach(cb=>cb.checked=state.settings.heroPool.includes(cb.dataset.heroId)); getUniqueRoles().forEach(r => { const i = document.getElementById(`limit-${r}`); if(i) i.value = state.settings.roleLimits[r] ?? state.settings.teamSize; }); }
     function displaySuggestions(target, suggestions) {
         const wrapper = getWrapper(target);
-        if (!wrapper || !state.allyTeam[state.myHeroSlotIndex]) return;
+        if (!wrapper || (suggestions.length === 0)) { displayMessage(target, '明確な提案不可'); return; }
         const area = wrapper.querySelector('.suggestion-area');
-        const scoreBefore = calculateForceDifference(state.allyTeam, state.enemyTeam);
         area.innerHTML = suggestions.slice(0, state.settings.suggestionCount).map(s => {
-            const tempAllyTeam = [...state.allyTeam];
-            tempAllyTeam[state.myHeroSlotIndex] = s.heroId;
-            const scoreAfter = calculateForceDifference(tempAllyTeam, state.enemyTeam);
-            const tagClass = (scoreAfter >= scoreBefore) ? 'low-risk' : 'high-risk';
+            const tagClass = (s.delta >= 0) ? 'low-risk' : 'high-risk';
             const tagName = tagClass === 'low-risk' ? '安定' : '挑戦';
             const greyedClass = state.settings.heroPool.includes(s.heroId) ? 'greyed-out' : '';
             return `<div class="suggestion-item show"><span class="suggestion-name ${greyedClass}">${getHeroById(s.heroId).name}</span><span class="suggestion-tag ${tagClass}">${tagName}</span></div>`;

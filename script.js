@@ -37,7 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         for (const key in idMap) { elements[key] = document.getElementById(idMap[key]); }
     }
-    async function loadData() { [data.heroes, data.counters, data.synergy, data.maps] = await Promise.all([fetch('heroes.json').then(r=>r.json()), fetch('counters.json').then(r=>r.json()), fetch('synergy.json').then(r=>r.json()), fetch('maps.json').then(r=>r.json())]); }
+    async function loadAllData() { [data.heroes, data.counters, data.synergy, data.maps] = await Promise.all([fetch('heroes.json').then(r=>r.json()), fetch('counters.json').then(r=>r.json()), fetch('synergy.json').then(r=>r.json()), fetch('maps.json').then(r=>r.json())]); }
     function initializeAppState() { const size = state.settings.teamSize; state.allyTeam = Array(size).fill(null); state.enemyTeam = Array(size).fill(null); state.myHeroSlotIndex = Math.min(state.myHeroSlotIndex, size - 1); }
     function createUI() { createHeroSlots(); populatePalettes(); populateMapSelector(); populateHeroPoolChecklist(); populateRoleLimitSettings(); renderSettings(); }
     
@@ -184,33 +184,35 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- 分析と描画のメインフロー ---
-    function runAllAnalysesAndRender() { runAllAnalyses(); renderAll(); }
-    function runAllAnalyses() {
+    function runAllAnalysesAndRender() {
         clearVisualOverlays();
-        const isAllPicked = isAllFilled();
-        elements.centralPanel.classList.toggle('relation-mode', isAllPicked);
-        
-        if (isAllPicked) {
+        runAllAnalyses(); 
+        if (isAllFilled()) {
             setTimeout(drawRelationLines, 50);
-        } else {
-            const myHeroId = state.allyTeam[state.myHeroSlotIndex];
-            for (let i = 0; i < state.settings.teamSize; i++) {
-                if (state.allyTeam[i]) {
-                    const mode = i === state.myHeroSlotIndex ? 'Self-Analysis' : 'Ally-Support';
-                    const threats = getThreats(state.allyTeam[i]);
-                    if (state.enemyTeam.some(Boolean) && threats.length > 0) {
-                        displaySuggestions({ team: 'ally', index: i }, runAnalysis(mode, threats));
-                    } else {
-                        displayMessage({ team: 'ally', index: i }, '明確な脅威なし');
-                    }
-                }
-                if (myHeroId && state.enemyTeam[i]) {
-                    displaySuggestions({ team: 'enemy', index: i }, runAnalysis('Threat-Elimination', state.enemyTeam[i]));
+            setTimeout(drawSynergyLines, 50);
+        }
+        renderAll(); 
+    }
+    function runAllAnalyses() {
+        document.querySelectorAll('.suggestion-area').forEach(el => el.innerHTML = '');
+        const myHeroId = state.allyTeam[state.myHeroSlotIndex];
+
+        for (let i = 0; i < state.settings.teamSize; i++) {
+            if (state.allyTeam[i]) {
+                const mode = i === state.myHeroSlotIndex ? 'Self-Analysis' : 'Ally-Support';
+                const threats = getThreats(state.allyTeam[i]);
+                if (state.enemyTeam.some(Boolean) && threats.length > 0) {
+                    displaySuggestions({ team: 'ally', index: i }, runAnalysis(mode, threats));
+                } else {
+                    displayMessage({ team: 'ally', index: i }, '明確な脅威なし');
                 }
             }
-            if (myHeroId && state.enemyTeam.some(Boolean)) {
-                displaySuggestions('global', runAnalysis('Strategic-Optimization'));
+            if (myHeroId && state.enemyTeam[i]) {
+                displaySuggestions({ team: 'enemy', index: i }, runAnalysis('Threat-Elimination', state.enemyTeam[i]));
             }
+        }
+        if (myHeroId && state.enemyTeam.some(Boolean)) {
+            displaySuggestions('global', runAnalysis('Strategic-Optimization'));
         }
     }
     function runAnalysis(mode, analysisTarget) {
@@ -269,7 +271,6 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderAll() {
         renderSlots(); renderBans(); renderTeamRoleIcons(); renderSettings();
         if(state.activeSelection) { renderPalettes(); renderActiveSelection(); } else { renderActiveSelection(true); }
-        drawSynergyAndMapInfo();
     }
     function renderSlots() { document.querySelectorAll('.hero-slot').forEach(slot => { const {team,index} = slot.dataset; const heroId = state[`${team}Team`][index]; if(heroId){slot.textContent=getHeroById(heroId).name;slot.classList.add('selected');}else{slot.textContent=`スロット ${parseInt(index)+1}`;slot.classList.remove('selected');}}); }
     function renderActiveSelection(forceClear = false) { document.querySelectorAll('.hero-slot.active-selection').forEach(s=>s.classList.remove('active-selection')); if(!forceClear && state.activeSelection){ const{team,index}=state.activeSelection; document.querySelector(`.hero-slot[data-team="${team}"][data-index="${index}"]`).classList.add('active-selection'); } }
@@ -316,6 +317,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const deltas = [];
         for (let i = 0; i < state.settings.teamSize; i++) {
             for (let j = 0; j < state.settings.teamSize; j++) {
+                if (!state.allyTeam[i] || !state.enemyTeam[j]) continue;
                 const scoreFwd = getCounterScore(state.allyTeam[i], state.enemyTeam[j]);
                 const scoreBwd = getCounterScore(state.enemyTeam[j], state.allyTeam[i]);
                 if (scoreFwd === 0 && scoreBwd === 0) continue;
@@ -344,14 +346,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const allySlots = state.allyTeam.map((id, i) => id ? document.getElementById(`slot-ally-${i}`) : null);
         for(let i = 0; i < allySlots.length; i++) {
             if (!allySlots[i]) continue;
-            // マップ相性
             if (getMapScore(state.allyTeam[i], state.currentMap) > 0) {
                 const tag = document.createElement('div');
                 tag.className = 'map-affinity-tag';
                 tag.textContent = 'MAP◎';
                 allySlots[i].appendChild(tag);
             }
-            // シナジー
             for(let j = i + 1; j < allySlots.length; j++) {
                 if (!allySlots[j] || getSynergyScore(state.allyTeam[i], state.allyTeam[j]) <= 0) continue;
                 try {
@@ -383,7 +383,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         let needsSave=false; getUniqueRoles().forEach(r=>{if(state.settings.roleLimits[r]===undefined){state.settings.roleLimits[r]=r==='tank'?1:(r==='damage'?2:2);needsSave=true;}}); if(needsSave)saveSettings();
     }
-    function switchTab(tabId) { const tc=document.getElementById('tab-content'); const t=document.getElementById(`${tabId}-tab`); const tabs=document.getElementById('tabs'); if(!tc||!t)return; tabs.querySelectorAll('.tab-link').forEach(el=>el.classList.remove('active')); tc.querySelectorAll('.tab-pane').forEach(el=>el.classList.remove('active')); t.classList.add('active'); tabs.querySelector(`.tab-link[data-tab="${tabId}"]`).classList.add('active'); }
+    function switchTab(tabId) { const tc=document.getElementById('tab-content'); const t=document.getElementById(`${tabId}-tab`); const tabs=document.getElementById('tabs'); if(!tc||!t||!tabs)return; tabs.querySelectorAll('.tab-link').forEach(el=>el.classList.remove('active')); tc.querySelectorAll('.tab-pane').forEach(el=>el.classList.remove('active')); t.classList.add('active'); tabs.querySelector(`.tab-link[data-tab="${tabId}"]`).classList.add('active'); }
     function showToast(message) { const t=document.getElementById('copy-toast'); t.textContent = message; t.className = "toast show"; setTimeout(() => { t.className = t.className.replace("show", ""); }, 2000); }
 
     initializeApp();

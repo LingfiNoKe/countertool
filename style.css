@@ -73,6 +73,7 @@ input[type="number"] { width: 60px; }
 .suggestion-message { color: #aaa; font-style: italic; font-size: 0.9em; text-align: center; padding: 10px 0; }
 .hidden { display: none !important; }
 #overlay-svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; overflow: visible; }
+#central-panel.relation-mode #tab-interface { visibility: hidden; pointer-events: none; }
 #relation-mode-ui { position: absolute; top: 0; left: 0; width: 100%; z-index: 10; background-color: var(--panel-bg); text-align: center; border-bottom: 1px solid var(--border-color); padding: 5px; box-sizing: border-box; }
 .relation-header { font-weight: bold; color: var(--highlight-color); margin-bottom: 5px; }
 #exit-relation-mode-btn { padding: 5px 10px; font-size: 0.9em; }

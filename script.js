@@ -91,9 +91,10 @@ document.addEventListener('DOMContentLoaded', () => {
             state.activeSelection = null;
         } else {
             state.activeSelection = { team: clickedTeam, index: clickedIndex };
-            if(!elements.relationModeUi.classList.contains('hidden')) {
-                toggleRelationView(false);
-            }
+        }
+        
+        if (elements.centralPanel.classList.contains('relation-mode')) {
+            toggleRelationView(false);
             switchTab('heroes');
         }
         renderAll();
@@ -196,12 +197,21 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     function runAllAnalyses() {
         clearVisualOverlays();
+        const myHeroId = state.allyTeam[state.myHeroSlotIndex];
+        
+        // 全員が埋まっているかチェック
         if (isAllFilled()) {
-            toggleRelationView(true);
+            // ハイブリッド表示
+            // 先に提案を描画
+            for (let i = 0; i < state.settings.teamSize; i++) {
+                displaySuggestions({ team: 'ally', index: i }, runAnalysis('Self-Analysis', getThreats(state.allyTeam[i]) || []));
+                displaySuggestions({ team: 'enemy', index: i }, runAnalysis('Threat-Elimination', state.enemyTeam[i]));
+            }
+            displaySuggestions('global', runAnalysis('Strategic-Optimization'));
+            // その上に線を引く
             setTimeout(() => { drawRelationLines(); drawSynergyLines(); }, 50);
         } else {
-            toggleRelationView(false);
-            const myHeroId = state.allyTeam[state.myHeroSlotIndex];
+            // 通常の提案表示
             for (let i = 0; i < state.settings.teamSize; i++) {
                 if (state.allyTeam[i]) {
                     const mode = i === state.myHeroSlotIndex ? 'Self-Analysis' : 'Ally-Support';
@@ -220,6 +230,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 displaySuggestions('global', runAnalysis('Strategic-Optimization'));
             }
         }
+        toggleRelationView(isAllFilled());
     }
     function runAnalysis(mode, analysisTarget) {
         let scores = calculateReturnScores(mode, analysisTarget);
@@ -252,7 +263,7 @@ document.addEventListener('DOMContentLoaded', () => {
             let counterScore = 0;
             switch(mode) {
                 case 'Self-Analysis': case 'Ally-Support':
-                    counterScore = analysisTarget.reduce((sum, t) => sum + getCounterScore(candidateHero.id, t), 0); break;
+                    counterScore = (analysisTarget || []).reduce((sum, t) => sum + getCounterScore(candidateHero.id, t), 0); break;
                 case 'Threat-Elimination':
                     counterScore = getCounterScore(candidateHero.id, analysisTarget); break;
                 case 'Strategic-Optimization':

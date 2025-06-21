@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hero Pick Tactical Analyzer</title>
-    <!-- 矢印描画ライブラリの読み込み -->
     <script src="https://cdn.jsdelivr.net/npm/leader-line-new@1.1.9/leader-line.min.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
@@ -83,16 +82,8 @@
                     </div>
                 </div>
             </div>
-            <!-- カウンター関係可視化エリア -->
-            <div id="relation-view" class="hidden">
-                <div class="relation-header">カウンター関係図</div>
-                <div class="relation-body">
-                    <div id="relation-ally-list" class="relation-list"></div>
-                    <svg id="relation-svg"></svg>
-                    <div id="relation-enemy-list" class="relation-list"></div>
-                </div>
-                <div class="relation-footer">いずれかのヒーロースロットをクリックして変更</div>
-            </div>
+            <!-- カウンター関係図 etc. のためのSVGオーバーレイ -->
+            <svg id="overlay-svg"></svg>
         </div>
 
         <!-- 右カラム: 敵チーム -->

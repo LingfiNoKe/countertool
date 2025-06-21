@@ -33,11 +33,13 @@ document.addEventListener('DOMContentLoaded', () => {
             heroPoolChecklist: 'hero-pool-checklist', mapSelector: 'map-selector', 
             globalSuggestionArea: 'global-suggestion-area', resetAllBtn: 'reset-all-btn', 
             resetHeroesBtn: 'reset-heroes-btn', copyCompositionBtn: 'copy-composition-btn',
-            importInput: 'import-data-input', overlaySvg: 'overlay-svg'
+            importInput: 'import-data-input', tabInterface: 'tab-interface', 
+            relationView: 'relation-view', overlaySvg: 'overlay-svg',
+            relationModeUi: 'relation-mode-ui', exitRelationModeBtn: 'exit-relation-mode-btn'
         };
         for (const key in idMap) { elements[key] = document.getElementById(idMap[key]); }
     }
-    async function loadAllData() { [data.heroes, data.counters, data.synergy, data.maps] = await Promise.all([fetch('heroes.json').then(r=>r.json()), fetch('counters.json').then(r=>r.json()), fetch('synergy.json').then(r=>r.json()), fetch('maps.json').then(r=>r.json())]); }
+    async function loadData() { [data.heroes, data.counters, data.synergy, data.maps] = await Promise.all([fetch('heroes.json').then(r=>r.json()), fetch('counters.json').then(r=>r.json()), fetch('synergy.json').then(r=>r.json()), fetch('maps.json').then(r=>r.json())]); }
     function initializeAppState() { const size = state.settings.teamSize; state.allyTeam = Array(size).fill(null); state.enemyTeam = Array(size).fill(null); state.myHeroSlotIndex = Math.min(state.myHeroSlotIndex, size - 1); }
     function createUI() { createHeroSlots(); populatePalettes(); populateMapSelector(); populateHeroPoolChecklist(); populateRoleLimitSettings(); renderSettings(); }
     
@@ -78,6 +80,7 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.copyCompositionBtn.addEventListener('click', copyComposition);
         document.querySelector('.data-management').addEventListener('click', e => { if(e.target.matches('button.control-btn')) handleDataManagement(e.target); });
         elements.importInput.addEventListener('change', importData);
+        elements.exitRelationModeBtn.addEventListener('click', () => toggleRelationView(false));
     }
 
     // --- イベントハンドラ ---
@@ -88,9 +91,12 @@ document.addEventListener('DOMContentLoaded', () => {
             state.activeSelection = null;
         } else {
             state.activeSelection = { team: clickedTeam, index: clickedIndex };
+            if(!elements.relationModeUi.classList.contains('hidden')) {
+                toggleRelationView(false);
+            }
             switchTab('heroes');
         }
-        runAllAnalysesAndRender();
+        renderAll();
     }
     function handleHeroSelection(heroId) {
         if (!state.activeSelection) return;
@@ -185,34 +191,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- 分析と描画のメインフロー ---
     function runAllAnalysesAndRender() {
-        clearVisualOverlays();
         runAllAnalyses(); 
-        if (isAllFilled()) {
-            setTimeout(drawRelationLines, 50);
-            setTimeout(drawSynergyLines, 50);
-        }
-        renderAll(); 
+        renderAll();
     }
     function runAllAnalyses() {
-        document.querySelectorAll('.suggestion-area').forEach(el => el.innerHTML = '');
-        const myHeroId = state.allyTeam[state.myHeroSlotIndex];
-
-        for (let i = 0; i < state.settings.teamSize; i++) {
-            if (state.allyTeam[i]) {
-                const mode = i === state.myHeroSlotIndex ? 'Self-Analysis' : 'Ally-Support';
-                const threats = getThreats(state.allyTeam[i]);
-                if (state.enemyTeam.some(Boolean) && threats.length > 0) {
-                    displaySuggestions({ team: 'ally', index: i }, runAnalysis(mode, threats));
-                } else {
-                    displayMessage({ team: 'ally', index: i }, '明確な脅威なし');
+        clearVisualOverlays();
+        if (isAllFilled()) {
+            setTimeout(() => { drawRelationLines(); drawSynergyLines(); }, 50);
+        } else {
+            const myHeroId = state.allyTeam[state.myHeroSlotIndex];
+            for (let i = 0; i < state.settings.teamSize; i++) {
+                if (state.allyTeam[i]) {
+                    const mode = i === state.myHeroSlotIndex ? 'Self-Analysis' : 'Ally-Support';
+                    const threats = getThreats(state.allyTeam[i]);
+                    if (state.enemyTeam.some(Boolean) && threats.length > 0) {
+                        displaySuggestions({ team: 'ally', index: i }, runAnalysis(mode, threats));
+                    } else {
+                        displayMessage({ team: 'ally', index: i }, '明確な脅威なし');
+                    }
+                }
+                if (myHeroId && state.enemyTeam[i]) {
+                    displaySuggestions({ team: 'enemy', index: i }, runAnalysis('Threat-Elimination', state.enemyTeam[i]));
                 }
             }
-            if (myHeroId && state.enemyTeam[i]) {
-                displaySuggestions({ team: 'enemy', index: i }, runAnalysis('Threat-Elimination', state.enemyTeam[i]));
+            if (myHeroId && state.enemyTeam.some(Boolean)) {
+                displaySuggestions('global', runAnalysis('Strategic-Optimization'));
             }
-        }
-        if (myHeroId && state.enemyTeam.some(Boolean)) {
-            displaySuggestions('global', runAnalysis('Strategic-Optimization'));
         }
     }
     function runAnalysis(mode, analysisTarget) {
@@ -271,6 +275,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderAll() {
         renderSlots(); renderBans(); renderTeamRoleIcons(); renderSettings();
         if(state.activeSelection) { renderPalettes(); renderActiveSelection(); } else { renderActiveSelection(true); }
+        drawMapAffinityTags();
     }
     function renderSlots() { document.querySelectorAll('.hero-slot').forEach(slot => { const {team,index} = slot.dataset; const heroId = state[`${team}Team`][index]; if(heroId){slot.textContent=getHeroById(heroId).name;slot.classList.add('selected');}else{slot.textContent=`スロット ${parseInt(index)+1}`;slot.classList.remove('selected');}}); }
     function renderActiveSelection(forceClear = false) { document.querySelectorAll('.hero-slot.active-selection').forEach(s=>s.classList.remove('active-selection')); if(!forceClear && state.activeSelection){ const{team,index}=state.activeSelection; document.querySelector(`.hero-slot[data-team="${team}"][data-index="${index}"]`).classList.add('active-selection'); } }
@@ -313,6 +318,11 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // --- 可視化ロジック ---
     function clearVisualOverlays() { drawnLines.forEach(line => line.remove()); drawnLines = []; document.querySelectorAll('.map-affinity-tag').forEach(t => t.remove()); }
+    function toggleRelationView(show) {
+        elements.centralPanel.classList.toggle('relation-mode', show);
+        elements.tabInterface.classList.toggle('hidden', show);
+        elements.relationModeUi.classList.toggle('hidden', !show);
+    }
     function drawRelationLines() {
         const deltas = [];
         for (let i = 0; i < state.settings.teamSize; i++) {

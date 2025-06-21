@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hero Pick Tactical Analyzer</title>
+    <!-- 矢印描画ライブラリの読み込み -->
     <script src="https://cdn.jsdelivr.net/npm/leader-line-new@1.1.9/leader-line.min.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
@@ -82,7 +83,12 @@
                     </div>
                 </div>
             </div>
-            <!-- カウンター関係図 etc. のためのSVGオーバーレイ -->
+            <!-- 関係図モードのUI -->
+            <div id="relation-mode-ui" class="hidden">
+                <div class="relation-header">カウンター関係図</div>
+                <button id="exit-relation-mode-btn" class="control-btn">＜ キャラ選択に戻る</button>
+            </div>
+            <!-- SVGオーバーレイ: 関係図やシナジー線を描画 -->
             <svg id="overlay-svg"></svg>
         </div>
 

@@ -7,7 +7,7 @@ body { font-family: 'Segoe UI', 'Meiryo', sans-serif; background-color: var(--bg
 #battle-board { display: flex; justify-content: space-between; height: 98vh; gap: 1vw; }
 .team-column, #central-panel { background-color: var(--panel-bg); border: 1px solid var(--border-color); border-radius: 8px; display: flex; flex-direction: column; }
 .team-column { flex: 1; min-width: 280px; }
-#central-panel { flex: 1.8; min-width: 400px; }
+#central-panel { flex: 1.8; min-width: 400px; position: relative; }
 .team-header { padding: 10px 15px; border-bottom: 1px solid var(--border-color); text-align: center; }
 h2 { margin: 0; }
 .team-role-icons { display: flex; justify-content: center; gap: 8px; margin-top: 8px; min-height: 20px; flex-wrap: wrap; }
@@ -74,7 +74,10 @@ input[type="number"] { width: 60px; }
 #global-analysis-container { justify-content: flex-end; padding-right: 15px; }
 #global-suggestion-area { padding-left: 15px; flex-grow: 1; }
 .suggestion-message { color: #aaa; font-style: italic; font-size: 0.9em; text-align: center; padding: 10px 0; }
+.hidden { display: none !important; }
 #central-panel.relation-mode #tab-interface { visibility: hidden; pointer-events: none; }
-#relation-svg-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 5; pointer-events: none; overflow: visible; }
+#relation-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: transparent; z-index: 5; }
+.relation-footer { position: absolute; bottom: 0; left: 0; width: 100%; text-align: center; padding: 10px; font-size: 0.9em; color: #aaa; background: var(--panel-bg); border-top: 1px solid var(--border-color); box-sizing: border-box;}
+#relation-svg-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; overflow: visible; }
 .toast { visibility: hidden; min-width: 250px; background-color: #333; color: #fff; text-align: center; border-radius: 2px; padding: 16px; position: fixed; z-index: 20; left: 50%; bottom: 30px; transform: translateX(-50%); opacity: 0; transition: opacity 0.5s, visibility 0.5s; }
 .toast.show { visibility: visible; opacity: 1; }

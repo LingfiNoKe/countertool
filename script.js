@@ -25,13 +25,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function cacheDOMElements() {
         const idMap = {
-            battleBoard: 'battle-board', allySlotsContainer: 'ally-team-slots', enemySlotsContainer: 'enemy-team-slots', 
-            heroPalette: 'hero-palette', banPalette: 'ban-palette', bannedList: 'banned-list', centralPanel: 'central-panel',
+            battleBoard: 'battle-board', allySlotsContainer: 'ally-team-slots',
+            enemySlotsContainer: 'enemy-team-slots', heroPalette: 'hero-palette',
+            banPalette: 'ban-palette', bannedList: 'banned-list', centralPanel: 'central-panel',
             teamSizeSelect: 'team-size-select', roleLimitSettingsContainer: 'role-limit-settings',
             allowDuplicatesCheckbox: 'allow-duplicates-checkbox', suggestionCount: 'suggestion-count',
-            heroPoolChecklist: 'hero-pool-checklist', mapSelector: 'map-selector', globalSuggestionArea: 'global-suggestion-area', 
-            resetAllBtn: 'reset-all-btn', resetHeroesBtn: 'reset-heroes-btn', copyCompositionBtn: 'copy-composition-btn',
-            importInput: 'import-data-input', tabInterface: 'tab-interface', relationSvgCanvas: 'relation-svg-canvas'
+            heroPoolChecklist: 'hero-pool-checklist', mapSelector: 'map-selector', 
+            globalSuggestionArea: 'global-suggestion-area', resetAllBtn: 'reset-all-btn', 
+            resetHeroesBtn: 'reset-heroes-btn', copyCompositionBtn: 'copy-composition-btn',
+            importInput: 'import-data-input', tabInterface: 'tab-interface', 
+            relationOverlay: 'relation-overlay', relationSvgCanvas: 'relation-svg-canvas'
         };
         for (const key in idMap) { elements[key] = document.getElementById(idMap[key]); }
     }
@@ -289,22 +292,22 @@ document.addEventListener('DOMContentLoaded', () => {
             const {team, index} = slot.dataset;
             const heroId = state[`${team}Team`][index];
             const hero = getHeroById(heroId);
-            slot.innerHTML = hero ? hero.name : `スロット ${parseInt(index) + 1}`;
-            slot.classList.toggle('selected', !!heroId);
-
+            let content = hero ? hero.name : `スロット ${parseInt(index) + 1}`;
+            
             const existingIcon = slot.querySelector('.map-affinity-icon');
             if(existingIcon) existingIcon.remove();
 
             if(hero && state.currentMap !== 'none') {
                 const mapScore = getMapScore(heroId, state.currentMap);
                 if (mapScore !== 0) {
-                    const iconEl = document.createElement('span');
-                    iconEl.className = `map-affinity-icon ${mapScore > 0 ? 'good' : 'bad'}`;
-                    iconEl.title = `マップ相性: ${mapScore}`;
-                    iconEl.innerHTML = mapScore > 0 ? '👍' : '👎';
-                    slot.appendChild(iconEl);
+                    const iconClass = mapScore > 0 ? 'good' : 'bad';
+                    const iconTitle = `マップ相性: ${mapScore}`;
+                    const iconHTML = `<span class="map-affinity-icon ${iconClass}" title="${iconTitle}"></span>`;
+                    content += iconHTML;
                 }
             }
+            slot.innerHTML = content;
+            slot.classList.toggle('selected', !!heroId);
         });
     }
     function renderActiveSelection(forceClear = false) { document.querySelectorAll('.hero-slot.active-selection').forEach(s=>s.classList.remove('active-selection')); if(!forceClear && state.activeSelection){ const{team,index}=state.activeSelection; document.querySelector(`.hero-slot[data-team="${team}"][data-index="${index}"]`).classList.add('active-selection'); } }
@@ -313,7 +316,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const {team,index} = state.activeSelection;
         const targetTeam = state[`${team}Team`];
         const pickedInTeam = state.settings.allowTeamDuplicates ? [] : targetTeam.filter(Boolean);
-        const roleCounts = countRoles(targetTeam, team === 'ally' ? index : -1);
+        const roleCounts = countRoles(targetTeam);
         const currentHero = getHeroById(targetTeam[index]);
         document.querySelectorAll('#hero-palette .hero-card').forEach(card => {
             const hero = getHeroById(card.dataset.heroId);
@@ -322,8 +325,13 @@ document.addEventListener('DOMContentLoaded', () => {
             if (pickedInTeam.includes(hero.id) && hero.id !== currentHero?.id) card.classList.add('picked');
             const limit = state.settings.roleLimits[hero.role] ?? state.settings.teamSize;
             let isLocked = (roleCounts[hero.role] || 0) >= limit;
-            if (team === 'ally' && index === state.myHeroSlotIndex && !isAllFilled()) { isLocked = false; }
-            else if (isLocked && currentHero && hero.role === currentHero.role) { isLocked = false; }
+            
+            if (isAllFilled() && isLocked && currentHero && hero.role === currentHero.role) {
+                 isLocked = false;
+            } else if (team === 'ally' && index === state.myHeroSlotIndex && !isAllFilled()) {
+                 isLocked = false;
+            }
+
             if (isLocked) card.classList.add('role-locked');
         });
     }
@@ -332,7 +340,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderSettings() { elements.teamSizeSelect.value = state.settings.teamSize; elements.suggestionCount.value = state.settings.suggestionCount; elements.allowDuplicatesCheckbox.checked = state.settings.allowTeamDuplicates; document.querySelectorAll('#hero-pool-checklist input').forEach(cb=>cb.checked=state.settings.heroPool.includes(cb.dataset.heroId)); getUniqueRoles().forEach(r => { const i = document.getElementById(`limit-${r}`); if(i) i.value = state.settings.roleLimits[r] ?? state.settings.teamSize; }); }
     function displaySuggestions(target, suggestions) {
         const wrapper = getWrapper(target);
-        if (!wrapper || !state.allyTeam[state.myHeroSlotIndex]) return;
+        if (!wrapper) return;
         if(suggestions.length === 0) { displayMessage(target, '明確な提案不可'); return; }
         const area = wrapper.querySelector('.suggestion-area');
         area.innerHTML = suggestions.slice(0, state.settings.suggestionCount).map((s, index) => {
@@ -347,7 +355,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 関係図ロジック ---
     function toggleRelationView(show) {
         elements.centralPanel.classList.toggle('relation-mode', show);
-        elements.relationSvgCanvas.innerHTML = ''; // 古いSVG要素をクリア
+        elements.relationSvgCanvas.innerHTML = '';
         drawnLines.forEach(line => line.remove());
         drawnLines = [];
         if (show) { setTimeout(drawRelationLines, 50); }

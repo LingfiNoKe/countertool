@@ -25,16 +25,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function cacheDOMElements() {
         const idMap = {
-            battleBoard: 'battle-board', allySlotsContainer: 'ally-team-slots',
-            enemySlotsContainer: 'enemy-team-slots', heroPalette: 'hero-palette',
-            banPalette: 'ban-palette', bannedList: 'banned-list', centralPanel: 'central-panel',
+            battleBoard: 'battle-board', allySlotsContainer: 'ally-team-slots', enemySlotsContainer: 'enemy-team-slots', 
+            heroPalette: 'hero-palette', banPalette: 'ban-palette', bannedList: 'banned-list', centralPanel: 'central-panel',
             teamSizeSelect: 'team-size-select', roleLimitSettingsContainer: 'role-limit-settings',
             allowDuplicatesCheckbox: 'allow-duplicates-checkbox', suggestionCount: 'suggestion-count',
-            heroPoolChecklist: 'hero-pool-checklist', mapSelector: 'map-selector', 
-            globalSuggestionArea: 'global-suggestion-area', resetAllBtn: 'reset-all-btn', 
-            resetHeroesBtn: 'reset-heroes-btn', copyCompositionBtn: 'copy-composition-btn',
-            importInput: 'import-data-input', 
-            tabInterface: 'tab-interface', relationView: 'relation-view'
+            heroPoolChecklist: 'hero-pool-checklist', mapSelector: 'map-selector', globalSuggestionArea: 'global-suggestion-area', 
+            resetAllBtn: 'reset-all-btn', resetHeroesBtn: 'reset-heroes-btn', copyCompositionBtn: 'copy-composition-btn',
+            importInput: 'import-data-input', tabInterface: 'tab-interface', relationSvgCanvas: 'relation-svg-canvas'
         };
         for (const key in idMap) { elements[key] = document.getElementById(idMap[key]); }
     }
@@ -88,12 +85,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const clickedIndex = parseInt(slot.dataset.index, 10);
             if (state.activeSelection && state.activeSelection.team === clickedTeam && state.activeSelection.index === clickedIndex) {
                 state.activeSelection = null;
-                toggleRelationView(true);
             } else {
                 state.activeSelection = { team: clickedTeam, index: clickedIndex };
-                toggleRelationView(false);
                 switchTab('heroes');
             }
+            toggleRelationView(state.activeSelection === null);
         } else {
             state.activeSelection = { team: slot.dataset.team, index: parseInt(slot.dataset.index, 10) };
             switchTab('heroes');
@@ -145,7 +141,7 @@ document.addEventListener('DOMContentLoaded', () => {
             text += `【${teamName}】\n`;
             getUniqueRoles().forEach(role => {
                 const heroes = team.map(getHeroById).filter(h => h && h.role === role);
-                if(heroes.length > 0) text += `${role}: ${heroes.map(h => h.name).join(', ')}\n`;
+                if(heroes.length > 0) text += `${role.charAt(0).toUpperCase() + role.slice(1)}: ${heroes.map(h => h.name).join(', ')}\n`;
             });
         };
         createTeamText('味方チーム', state.allyTeam);
@@ -153,7 +149,7 @@ document.addEventListener('DOMContentLoaded', () => {
         createTeamText('敵チーム', state.enemyTeam);
 
         if (state.allyTeam[state.myHeroSlotIndex] && state.enemyTeam.some(Boolean)) {
-            text += '\n--- 全体分析リターン内訳 ---\n';
+            text += '\n--- 全体分析リターン内訳 (あなた視点) ---\n';
             const suggestions = runAnalysis('Strategic-Optimization');
             suggestions.slice(0, 3).forEach(s => {
                 const candHero = getHeroById(s.heroId);
@@ -232,7 +228,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function runAnalysis(mode, analysisTarget) {
         let scores = calculateReturnScores(mode, analysisTarget);
         if (scores.length > 0 && scores.every(s => s.return === 0)) {
-            return []; // 全員0点なら提案不可
+            return []; 
         }
         
         const scoreBefore = calculateForceDifference(state.allyTeam, state.enemyTeam);
@@ -296,8 +292,8 @@ document.addEventListener('DOMContentLoaded', () => {
             slot.innerHTML = hero ? hero.name : `スロット ${parseInt(index) + 1}`;
             slot.classList.toggle('selected', !!heroId);
 
-            const icon = slot.querySelector('.map-affinity-icon');
-            if(icon) icon.remove();
+            const existingIcon = slot.querySelector('.map-affinity-icon');
+            if(existingIcon) existingIcon.remove();
 
             if(hero && state.currentMap !== 'none') {
                 const mapScore = getMapScore(heroId, state.currentMap);
@@ -305,6 +301,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const iconEl = document.createElement('span');
                     iconEl.className = `map-affinity-icon ${mapScore > 0 ? 'good' : 'bad'}`;
                     iconEl.title = `マップ相性: ${mapScore}`;
+                    iconEl.innerHTML = mapScore > 0 ? '👍' : '👎';
                     slot.appendChild(iconEl);
                 }
             }
@@ -350,6 +347,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 関係図ロジック ---
     function toggleRelationView(show) {
         elements.centralPanel.classList.toggle('relation-mode', show);
+        elements.relationSvgCanvas.innerHTML = ''; // 古いSVG要素をクリア
         drawnLines.forEach(line => line.remove());
         drawnLines = [];
         if (show) { setTimeout(drawRelationLines, 50); }
@@ -382,7 +380,6 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch(e) { console.error("LeaderLine error:", e); }
         });
         
-        // シナジーの矢印
         for (let i = 0; i < state.settings.teamSize; i++) {
             for (let j = i + 1; j < state.settings.teamSize; j++) {
                 const synergy = getSynergyScore(state.allyTeam[i], state.allyTeam[j]);
@@ -418,10 +415,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const parsed = JSON.parse(saved);
             state.settings = { ...state.settings, ...parsed };
         }
-        let needsSave=false; getUniqueRoles().forEach(r=>{if(state.settings.roleLimits[r]===undefined){state.settings.roleLimits[r]=r==='tank'?1:(r==='damage'?2:2);needsSave=true;}}); if(needsSave)saveSettings();
+        let needsSave=false; getUniqueRoles().forEach(r=>{if(state.settings.roleLimits[r]===undefined){const defaults=state.settings.teamSize===5?{tank:1,damage:2,support:2}:{};state.settings.roleLimits[r]=defaults[r]??Math.floor(state.settings.teamSize/3);needsSave=true;}}); if(needsSave)saveSettings();
     }
     function switchTab(tabId) { const tc=document.getElementById('tab-content'); const t=document.getElementById(`${tabId}-tab`); const tabs=document.getElementById('tabs'); if(!tc||!t)return; tabs.querySelectorAll('.tab-link').forEach(el=>el.classList.remove('active')); tc.querySelectorAll('.tab-pane').forEach(el=>el.classList.remove('active')); t.classList.add('active'); tabs.querySelector(`.tab-link[data-tab="${tabId}"]`).classList.add('active'); }
     function showToast(message) { const t=document.getElementById('copy-toast'); t.textContent = message; t.className = "toast show"; setTimeout(() => { t.className = t.className.replace("show", ""); }, 2000); }
-
+    
     initializeApp();
 });

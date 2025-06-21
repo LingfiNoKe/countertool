@@ -83,13 +83,16 @@
                     </div>
                 </div>
             </div>
-            <!-- 関係図モードのUI -->
-            <div id="relation-mode-ui" class="hidden">
+            <!-- カウンター関係可視化エリア -->
+            <div id="relation-view" class="hidden">
                 <div class="relation-header">カウンター関係図</div>
-                <button id="exit-relation-mode-btn" class="control-btn">＜ 提案モードに戻る</button>
+                <div class="relation-body">
+                    <div id="relation-ally-list" class="relation-list"></div>
+                    <svg id="relation-svg"></svg>
+                    <div id="relation-enemy-list" class="relation-list"></div>
+                </div>
+                <div class="relation-footer">いずれかのヒーロースロットをクリックして変更</div>
             </div>
-            <!-- SVGオーバーレイ: 関係図やシナジー線を描画 -->
-            <svg id="overlay-svg"></svg>
         </div>
 
         <!-- 右カラム: 敵チーム -->

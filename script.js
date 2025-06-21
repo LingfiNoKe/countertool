@@ -33,8 +33,8 @@ document.addEventListener('DOMContentLoaded', () => {
             heroPoolChecklist: 'hero-pool-checklist', mapSelector: 'map-selector', 
             globalSuggestionArea: 'global-suggestion-area', resetAllBtn: 'reset-all-btn', 
             resetHeroesBtn: 'reset-heroes-btn', copyCompositionBtn: 'copy-composition-btn',
-            importInput: 'import-data-input', tabInterface: 'tab-interface', 
-            relationOverlay: 'relation-overlay', relationSvgCanvas: 'relation-svg-canvas'
+            importInput: 'import-data-input', 
+            tabInterface: 'tab-interface', relationOverlay: 'relation-overlay'
         };
         for (const key in idMap) { elements[key] = document.getElementById(idMap[key]); }
     }
@@ -313,26 +313,36 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderActiveSelection(forceClear = false) { document.querySelectorAll('.hero-slot.active-selection').forEach(s=>s.classList.remove('active-selection')); if(!forceClear && state.activeSelection){ const{team,index}=state.activeSelection; document.querySelector(`.hero-slot[data-team="${team}"][data-index="${index}"]`).classList.add('active-selection'); } }
     function renderPalettes() {
         if (!state.activeSelection) return;
-        const {team,index} = state.activeSelection;
-        const targetTeam = state[`${team}Team`];
-        const pickedInTeam = state.settings.allowTeamDuplicates ? [] : targetTeam.filter(Boolean);
-        const roleCounts = countRoles(targetTeam);
-        const currentHero = getHeroById(targetTeam[index]);
+        const {team, index} = state.activeSelection;
+        const teamState = state[`${team}Team`];
+        const isReplacing = teamState[index] !== null;
+        const currentHero = getHeroById(teamState[index]);
+        const roleCounts = countRoles(teamState, isReplacing ? -1 : index);
+    
         document.querySelectorAll('#hero-palette .hero-card').forEach(card => {
             const hero = getHeroById(card.dataset.heroId);
             card.className = 'hero-card';
-            if (state.bannedHeroes.includes(hero.id)) card.classList.add('banned');
-            if (pickedInTeam.includes(hero.id) && hero.id !== currentHero?.id) card.classList.add('picked');
+    
+            if (state.bannedHeroes.includes(hero.id)) {
+                card.classList.add('banned');
+            }
+            if (!state.settings.allowTeamDuplicates && teamState.includes(hero.id) && hero.id !== currentHero?.id) {
+                card.classList.add('picked');
+            }
+    
             const limit = state.settings.roleLimits[hero.role] ?? state.settings.teamSize;
             let isLocked = (roleCounts[hero.role] || 0) >= limit;
-            
-            if (isAllFilled() && isLocked && currentHero && hero.role === currentHero.role) {
-                 isLocked = false;
-            } else if (team === 'ally' && index === state.myHeroSlotIndex && !isAllFilled()) {
-                 isLocked = false;
+    
+            if (isReplacing && hero.role === currentHero.role) {
+                isLocked = false;
             }
-
-            if (isLocked) card.classList.add('role-locked');
+            if (team === 'ally' && index === state.myHeroSlotIndex && !isAllFilled()) {
+                isLocked = false;
+            }
+    
+            if (isLocked) {
+                card.classList.add('role-locked');
+            }
         });
     }
     function renderBans() { elements.bannedList.innerHTML = state.bannedHeroes.map(id => `<div class="banned-hero-item" data-hero-id="${id}">${getHeroById(id).name}</div>`).join(''); }
@@ -355,7 +365,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 関係図ロジック ---
     function toggleRelationView(show) {
         elements.centralPanel.classList.toggle('relation-mode', show);
-        elements.relationSvgCanvas.innerHTML = '';
+        elements.relationOverlay.classList.toggle('hidden', !show);
         drawnLines.forEach(line => line.remove());
         drawnLines = [];
         if (show) { setTimeout(drawRelationLines, 50); }
@@ -427,6 +437,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     function switchTab(tabId) { const tc=document.getElementById('tab-content'); const t=document.getElementById(`${tabId}-tab`); const tabs=document.getElementById('tabs'); if(!tc||!t)return; tabs.querySelectorAll('.tab-link').forEach(el=>el.classList.remove('active')); tc.querySelectorAll('.tab-pane').forEach(el=>el.classList.remove('active')); t.classList.add('active'); tabs.querySelector(`.tab-link[data-tab="${tabId}"]`).classList.add('active'); }
     function showToast(message) { const t=document.getElementById('copy-toast'); t.textContent = message; t.className = "toast show"; setTimeout(() => { t.className = t.className.replace("show", ""); }, 2000); }
-    
+    function exportData(fileKey) { const blob=new Blob([JSON.stringify(data[fileKey],null,2)],{type:"application/json"});const a=Object.assign(document.createElement('a'),{href:URL.createObjectURL(blob),download:`${fileKey}.json`});a.click();URL.revokeObjectURL(a.href);}
+
     initializeApp();
 });

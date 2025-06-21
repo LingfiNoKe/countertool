@@ -54,7 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function createSlotHTML(team, index) {
         const isMineClass = (team === 'ally' && index === state.myHeroSlotIndex) ? 'is-mine' : '';
         const wrapperStyle = team === 'enemy' ? ' style="flex-direction: row-reverse;"' : '';
-        return `<div class="hero-slot-wrapper" id="wrapper-${team}-${index}" data-team="${team}" data-index="${index}"${wrapperStyle}><div class="suggestion-area"></div><div class="hero-slot ${team} ${isMineClass}" id="slot-${team}-${index}" data-team="${team}" data-index="${index}">スロット ${index + 1}</div></div>`;
+        return `<div class="hero-slot-wrapper" id="wrapper-${team}-${index}" data-team="${team}" data-index="${index}"${wrapperStyle}><div class="suggestion-area"></div><div class="hero-slot ${team} ${isMineClass}" id="slot-${team}-${index}" data-team="${team}" data-index="${index}">スロット ${parseInt(index)+1}</div></div>`;
     }
     function populatePalettes() { const uniqueRoles = getUniqueRoles(); [elements.heroPalette, elements.banPalette].forEach(p => { p.innerHTML = uniqueRoles.map(r => `<h3 class="role-header">${r}</h3>` + data.heroes.filter(h => h.role === r).sort((a, b) => a.name.localeCompare(b.name, 'ja')).map(h => `<div class="hero-card" data-hero-id="${h.id}">${h.name}</div>`).join('')).join(''); }); }
     function populateMapSelector() { elements.mapSelector.innerHTML = '<option value="none">マップ未選択</option>' + Object.keys(data.maps).map(id => `<option value="${id}">${data.maps[id].name}</option>`).join(''); }
@@ -172,11 +172,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const isExport = button.classList.contains('export');
 
         if (isExport) {
-            const dataToExport = data[fileKey];
-            const blob = new Blob([JSON.stringify(dataToExport, null, 2)], {type: "application/json"});
-            const a = Object.assign(document.createElement('a'), {href: URL.createObjectURL(blob), download: `${fileKey}.json`});
-            a.click();
-            URL.revokeObjectURL(a.href);
+            exportData(fileKey);
         } else {
             elements.importInput.dataset.targetFile = fileKey;
             elements.importInput.click();
@@ -186,7 +182,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const file = e.target.files[0];
         const targetFile = e.target.dataset.targetFile;
         if (!file || !targetFile) return;
-
         const reader = new FileReader();
         reader.onload = e => {
             try {
@@ -219,8 +214,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const mode = i === state.myHeroSlotIndex ? 'Self-Analysis' : 'Ally-Support';
                 const threats = getThreats(state.allyTeam[i]);
                 if (state.enemyTeam.some(Boolean) && threats.length > 0) {
-                    const suggestions = runAnalysis(mode, threats);
-                    displaySuggestions({ team: 'ally', index: i }, suggestions);
+                    displaySuggestions({ team: 'ally', index: i }, runAnalysis(mode, threats));
                 } else {
                     displayMessage({ team: 'ally', index: i }, '明確な脅威なし');
                 }
@@ -241,7 +235,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return []; // 全員0点なら提案不可
         }
         
-        // 提案にDelta（戦力差スコアの変動）を追加
         const scoreBefore = calculateForceDifference(state.allyTeam, state.enemyTeam);
         scores = scores.map(s => {
             const tempAllyTeam = [...state.allyTeam];
@@ -251,7 +244,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return s;
         });
 
-        // ソート（第1キー：リターン, 第2キー：Delta）
         scores.sort((a, b) => (b.return - a.return) || (b.delta - a.delta));
         return scores;
     }
@@ -296,7 +288,28 @@ document.addEventListener('DOMContentLoaded', () => {
         renderSlots(); renderBans(); renderTeamRoleIcons(); renderSettings();
         if(state.activeSelection) { renderPalettes(); renderActiveSelection(); } else { renderActiveSelection(true); }
     }
-    function renderSlots() { document.querySelectorAll('.hero-slot').forEach(slot => { const {team,index} = slot.dataset; const heroId = state[`${team}Team`][index]; if(heroId){slot.textContent=getHeroById(heroId).name;slot.classList.add('selected');}else{slot.textContent=`スロット ${parseInt(index)+1}`;slot.classList.remove('selected');}}); }
+    function renderSlots() {
+        document.querySelectorAll('.hero-slot').forEach(slot => {
+            const {team, index} = slot.dataset;
+            const heroId = state[`${team}Team`][index];
+            const hero = getHeroById(heroId);
+            slot.innerHTML = hero ? hero.name : `スロット ${parseInt(index) + 1}`;
+            slot.classList.toggle('selected', !!heroId);
+
+            const icon = slot.querySelector('.map-affinity-icon');
+            if(icon) icon.remove();
+
+            if(hero && state.currentMap !== 'none') {
+                const mapScore = getMapScore(heroId, state.currentMap);
+                if (mapScore !== 0) {
+                    const iconEl = document.createElement('span');
+                    iconEl.className = `map-affinity-icon ${mapScore > 0 ? 'good' : 'bad'}`;
+                    iconEl.title = `マップ相性: ${mapScore}`;
+                    slot.appendChild(iconEl);
+                }
+            }
+        });
+    }
     function renderActiveSelection(forceClear = false) { document.querySelectorAll('.hero-slot.active-selection').forEach(s=>s.classList.remove('active-selection')); if(!forceClear && state.activeSelection){ const{team,index}=state.activeSelection; document.querySelector(`.hero-slot[data-team="${team}"][data-index="${index}"]`).classList.add('active-selection'); } }
     function renderPalettes() {
         if (!state.activeSelection) return;
@@ -322,13 +335,14 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderSettings() { elements.teamSizeSelect.value = state.settings.teamSize; elements.suggestionCount.value = state.settings.suggestionCount; elements.allowDuplicatesCheckbox.checked = state.settings.allowTeamDuplicates; document.querySelectorAll('#hero-pool-checklist input').forEach(cb=>cb.checked=state.settings.heroPool.includes(cb.dataset.heroId)); getUniqueRoles().forEach(r => { const i = document.getElementById(`limit-${r}`); if(i) i.value = state.settings.roleLimits[r] ?? state.settings.teamSize; }); }
     function displaySuggestions(target, suggestions) {
         const wrapper = getWrapper(target);
-        if (!wrapper || (suggestions.length === 0)) { displayMessage(target, '明確な提案不可'); return; }
+        if (!wrapper || !state.allyTeam[state.myHeroSlotIndex]) return;
+        if(suggestions.length === 0) { displayMessage(target, '明確な提案不可'); return; }
         const area = wrapper.querySelector('.suggestion-area');
-        area.innerHTML = suggestions.slice(0, state.settings.suggestionCount).map(s => {
+        area.innerHTML = suggestions.slice(0, state.settings.suggestionCount).map((s, index) => {
             const tagClass = (s.delta >= 0) ? 'low-risk' : 'high-risk';
             const tagName = tagClass === 'low-risk' ? '安定' : '挑戦';
             const greyedClass = state.settings.heroPool.includes(s.heroId) ? 'greyed-out' : '';
-            return `<div class="suggestion-item show"><span class="suggestion-name ${greyedClass}">${getHeroById(s.heroId).name}</span><span class="suggestion-tag ${tagClass}">${tagName}</span></div>`;
+            return `<div class="suggestion-item show"><span class="suggestion-rank">${index + 1}.</span><span class="suggestion-name ${greyedClass}">${getHeroById(s.heroId).name}</span><span class="suggestion-tag ${tagClass}">${tagName}</span></div>`;
         }).join('');
     }
     function displayMessage(target, message) { const wrapper = getWrapper(target); if(wrapper) wrapper.querySelector('.suggestion-area').innerHTML = `<div class="suggestion-message">${message}</div>`; }
@@ -367,6 +381,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 drawnLines.push(line);
             } catch(e) { console.error("LeaderLine error:", e); }
         });
+        
+        // シナジーの矢印
+        for (let i = 0; i < state.settings.teamSize; i++) {
+            for (let j = i + 1; j < state.settings.teamSize; j++) {
+                const synergy = getSynergyScore(state.allyTeam[i], state.allyTeam[j]);
+                if (synergy > 0.5) {
+                    const startEl = document.getElementById(`slot-ally-${i}`);
+                    const endEl = document.getElementById(`slot-ally-${j}`);
+                    if (!startEl || !endEl) continue;
+                    try {
+                        const line = new LeaderLine(startEl, endEl, { color: 'rgba(255, 193, 7, 0.6)', size: `calc(1px + ${0.1 * synergy}vw)`, path: 'arc', dash: {animation: true}, endPlug: 'behind' });
+                        drawnLines.push(line);
+                    } catch(e) { console.error("LeaderLine error:", e); }
+                }
+            }
+        }
     }
 
     // --- データアクセス＆ヘルパー ---

@@ -33,13 +33,13 @@ document.addEventListener('DOMContentLoaded', () => {
             heroPoolChecklist: 'hero-pool-checklist', mapSelector: 'map-selector', 
             globalSuggestionArea: 'global-suggestion-area', resetAllBtn: 'reset-all-btn', 
             resetHeroesBtn: 'reset-heroes-btn', copyCompositionBtn: 'copy-composition-btn',
-            importInput: 'import-data-input', tabInterface: 'tab-interface', 
-            relationView: 'relation-view', overlaySvg: 'overlay-svg',
-            relationModeUi: 'relation-mode-ui', exitRelationModeBtn: 'exit-relation-mode-btn'
+            importInput: 'import-data-input', overlaySvg: 'overlay-svg',
+            tabInterface: 'tab-interface', relationModeUi: 'relation-mode-ui',
+            exitRelationModeBtn: 'exit-relation-mode-btn'
         };
         for (const key in idMap) { elements[key] = document.getElementById(idMap[key]); }
     }
-    async function loadData() { [data.heroes, data.counters, data.synergy, data.maps] = await Promise.all([fetch('heroes.json').then(r=>r.json()), fetch('counters.json').then(r=>r.json()), fetch('synergy.json').then(r=>r.json()), fetch('maps.json').then(r=>r.json())]); }
+    async function loadAllData() { [data.heroes, data.counters, data.synergy, data.maps] = await Promise.all([fetch('heroes.json').then(r=>r.json()), fetch('counters.json').then(r=>r.json()), fetch('synergy.json').then(r=>r.json()), fetch('maps.json').then(r=>r.json())]); }
     function initializeAppState() { const size = state.settings.teamSize; state.allyTeam = Array(size).fill(null); state.enemyTeam = Array(size).fill(null); state.myHeroSlotIndex = Math.min(state.myHeroSlotIndex, size - 1); }
     function createUI() { createHeroSlots(); populatePalettes(); populateMapSelector(); populateHeroPoolChecklist(); populateRoleLimitSettings(); renderSettings(); }
     
@@ -197,8 +197,10 @@ document.addEventListener('DOMContentLoaded', () => {
     function runAllAnalyses() {
         clearVisualOverlays();
         if (isAllFilled()) {
+            toggleRelationView(true);
             setTimeout(() => { drawRelationLines(); drawSynergyLines(); }, 50);
         } else {
+            toggleRelationView(false);
             const myHeroId = state.allyTeam[state.myHeroSlotIndex];
             for (let i = 0; i < state.settings.teamSize; i++) {
                 if (state.allyTeam[i]) {
@@ -391,7 +393,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const parsed = JSON.parse(saved);
             state.settings = { ...state.settings, ...parsed };
         }
-        let needsSave=false; getUniqueRoles().forEach(r=>{if(state.settings.roleLimits[r]===undefined){state.settings.roleLimits[r]=r==='tank'?1:(r==='damage'?2:2);needsSave=true;}}); if(needsSave)saveSettings();
+        let needsSave=false; getUniqueRoles().forEach(r=>{if(state.settings.roleLimits[r]===undefined){const defaults = {'tank':1, 'damage':2, 'support':2}; state.settings.roleLimits[r] = defaults[r] ?? 1; needsSave=true;}}); if(needsSave)saveSettings();
     }
     function switchTab(tabId) { const tc=document.getElementById('tab-content'); const t=document.getElementById(`${tabId}-tab`); const tabs=document.getElementById('tabs'); if(!tc||!t||!tabs)return; tabs.querySelectorAll('.tab-link').forEach(el=>el.classList.remove('active')); tc.querySelectorAll('.tab-pane').forEach(el=>el.classList.remove('active')); t.classList.add('active'); tabs.querySelector(`.tab-link[data-tab="${tabId}"]`).classList.add('active'); }
     function showToast(message) { const t=document.getElementById('copy-toast'); t.textContent = message; t.className = "toast show"; setTimeout(() => { t.className = t.className.replace("show", ""); }, 2000); }

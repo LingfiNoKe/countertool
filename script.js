@@ -39,7 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         for (const key in idMap) { elements[key] = document.getElementById(idMap[key]); }
     }
-    async function loadAllData() { [data.heroes, data.counters, data.synergy, data.maps] = await Promise.all([fetch('heroes.json').then(r=>r.json()), fetch('counters.json').then(r=>r.json()), fetch('synergy.json').then(r=>r.json()), fetch('maps.json').then(r=>r.json())]); }
+    async function loadData() { [data.heroes, data.counters, data.synergy, data.maps] = await Promise.all([fetch('heroes.json').then(r=>r.json()), fetch('counters.json').then(r=>r.json()), fetch('synergy.json').then(r=>r.json()), fetch('maps.json').then(r=>r.json())]); }
     function initializeAppState() { const size = state.settings.teamSize; state.allyTeam = Array(size).fill(null); state.enemyTeam = Array(size).fill(null); state.myHeroSlotIndex = Math.min(state.myHeroSlotIndex, size - 1); }
     function createUI() { createHeroSlots(); populatePalettes(); populateMapSelector(); populateHeroPoolChecklist(); populateRoleLimitSettings(); renderSettings(); }
     
@@ -80,7 +80,7 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.copyCompositionBtn.addEventListener('click', copyComposition);
         document.querySelector('.data-management').addEventListener('click', e => { if(e.target.matches('button.control-btn')) handleDataManagement(e.target); });
         elements.importInput.addEventListener('change', importData);
-        elements.exitRelationModeBtn.addEventListener('click', () => toggleRelationView(false));
+        elements.exitRelationModeBtn.addEventListener('click', () => { state.activeSelection = null; runAllAnalysesAndRender(); });
     }
 
     // --- イベントハンドラ ---
@@ -354,18 +354,24 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch(e) { console.error("LeaderLine error:", e); }
         });
     }
-    function drawSynergyAndMapInfo() {
+    function drawMapAffinityTags() {
+        state.allyTeam.forEach((heroId, i) => {
+            if(heroId && getMapScore(heroId, state.currentMap) > 0) {
+                const slot = document.getElementById(`slot-ally-${i}`);
+                if (slot) {
+                    const tag = document.createElement('div');
+                    tag.className = 'map-affinity-tag';
+                    tag.textContent = 'MAP◎';
+                    slot.appendChild(tag);
+                }
+            }
+        });
+    }
+    function drawSynergyLines() {
         const allySlots = state.allyTeam.map((id, i) => id ? document.getElementById(`slot-ally-${i}`) : null);
         for(let i = 0; i < allySlots.length; i++) {
-            if (!allySlots[i]) continue;
-            if (getMapScore(state.allyTeam[i], state.currentMap) > 0) {
-                const tag = document.createElement('div');
-                tag.className = 'map-affinity-tag';
-                tag.textContent = 'MAP◎';
-                allySlots[i].appendChild(tag);
-            }
             for(let j = i + 1; j < allySlots.length; j++) {
-                if (!allySlots[j] || getSynergyScore(state.allyTeam[i], state.allyTeam[j]) <= 0) continue;
+                if (!allySlots[i] || !allySlots[j] || getSynergyScore(state.allyTeam[i], state.allyTeam[j]) <= 0) continue;
                 try {
                     const line = new LeaderLine(allySlots[i], allySlots[j], { color: 'rgba(255, 193, 7, 0.6)', size: 3, dash: {animation: true}, path: 'arc' });
                     drawnLines.push(line);

@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 初期化フロー ---
     async function initializeApp() {
         cacheDOMElements();
-        await loadAllData();
+        await loadAllData(); // この関数が呼び出される
         loadSettings();
         initializeAppState();
         createUI();
@@ -35,13 +35,28 @@ document.addEventListener('DOMContentLoaded', () => {
             resetHeroesBtn: 'reset-heroes-btn', copyCompositionBtn: 'copy-composition-btn',
             importInput: 'import-data-input', overlaySvg: 'overlay-svg',
             tabInterface: 'tab-interface', relationModeUi: 'relation-mode-ui',
-            exitRelationModeBtn: 'exit-relation-mode-btn'
+            exitRelationModeBtn: 'exit-relation-mode-btn', tabs: 'tabs'
         };
         for (const key in idMap) { elements[key] = document.getElementById(idMap[key]); }
     }
-    async function loadData() { [data.heroes, data.counters, data.synergy, data.maps] = await Promise.all([fetch('heroes.json').then(r=>r.json()), fetch('counters.json').then(r=>r.json()), fetch('synergy.json').then(r=>r.json()), fetch('maps.json').then(r=>r.json())]); }
+
+    /**
+     * 【修正箇所】
+     * 抜け落ちていた、この関数定義を正しく追加する。
+     */
+    async function loadAllData() { 
+        [data.heroes, data.counters, data.synergy, data.maps] = await Promise.all([
+            fetch('heroes.json').then(r=>r.json()), 
+            fetch('counters.json').then(r=>r.json()),
+            fetch('synergy.json').then(r=>r.json()), 
+            fetch('maps.json').then(r=>r.json())
+        ]);
+    }
+
     function initializeAppState() { const size = state.settings.teamSize; state.allyTeam = Array(size).fill(null); state.enemyTeam = Array(size).fill(null); state.myHeroSlotIndex = Math.min(state.myHeroSlotIndex, size - 1); }
     function createUI() { createHeroSlots(); populatePalettes(); populateMapSelector(); populateHeroPoolChecklist(); populateRoleLimitSettings(); renderSettings(); }
+    
+    // ...以降のコードは、前回提出した最終版と同一です...
     
     // --- UI生成 ---
     function createHeroSlots() {
@@ -74,7 +89,7 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.roleLimitSettingsContainer.addEventListener('change', e => { if (e.target.matches('input')) { state.settings.roleLimits[e.target.dataset.role] = parseInt(e.target.value,10); saveAndReRender(); } });
         elements.allowDuplicatesCheckbox.addEventListener('change', () => { state.settings.allowTeamDuplicates = elements.allowDuplicatesCheckbox.checked; saveAndReRender(); });
         elements.heroPoolChecklist.addEventListener('change', e => { if (e.target.matches('input')) { handleHeroPoolChange(e.target); saveAndReRender(); } });
-        document.getElementById('tabs').addEventListener('click', e => { if (e.target.matches('.tab-link')) switchTab(e.target.dataset.tab); });
+        elements.tabs.addEventListener('click', e => { if (e.target.matches('.tab-link')) switchTab(e.target.dataset.tab); });
         elements.resetAllBtn.addEventListener('click', resetAll);
         elements.resetHeroesBtn.addEventListener('click', resetHeroes);
         elements.copyCompositionBtn.addEventListener('click', copyComposition);
@@ -91,10 +106,9 @@ document.addEventListener('DOMContentLoaded', () => {
             state.activeSelection = null;
         } else {
             state.activeSelection = { team: clickedTeam, index: clickedIndex };
-        }
-        
-        if (elements.centralPanel.classList.contains('relation-mode')) {
-            toggleRelationView(false);
+            if(!elements.relationModeUi.classList.contains('hidden')) {
+                toggleRelationView(false);
+            }
             switchTab('heroes');
         }
         renderAll();
@@ -121,12 +135,7 @@ document.addEventListener('DOMContentLoaded', () => {
         state.activeSelection = null;
         runAllAnalysesAndRender();
     }
-    function toggleBan(heroId) {
-        const idx = state.bannedHeroes.indexOf(heroId);
-        if (idx > -1) { state.bannedHeroes.splice(idx, 1); } 
-        else { state.bannedHeroes.push(heroId); state.allyTeam = state.allyTeam.map(id => id === heroId ? null : id); state.enemyTeam = state.enemyTeam.map(id => id === heroId ? null : id); }
-        runAllAnalysesAndRender();
-    }
+    function toggleBan(heroId) { const idx = state.bannedHeroes.indexOf(heroId); if (idx > -1) { state.bannedHeroes.splice(idx, 1); } else { state.bannedHeroes.push(heroId); state.allyTeam = state.allyTeam.map(id => id === heroId ? null : id); state.enemyTeam = state.enemyTeam.map(id => id === heroId ? null : id); } runAllAnalysesAndRender(); }
     function handleHeroPoolChange(cb) { const id = cb.dataset.heroId; if (cb.checked) { if (!state.settings.heroPool.includes(id)) state.settings.heroPool.push(id); } else { state.settings.heroPool = state.settings.heroPool.filter(hid => hid !== id); } }
     function saveAndReRender() { saveSettings(); runAllAnalysesAndRender(); }
     function resetAll() { if (confirm('リセットしますか？')) { state.bannedHeroes=[]; state.currentMap='none'; resetHeroes(); } }
@@ -197,21 +206,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     function runAllAnalyses() {
         clearVisualOverlays();
-        const myHeroId = state.allyTeam[state.myHeroSlotIndex];
-        
-        // 全員が埋まっているかチェック
         if (isAllFilled()) {
-            // ハイブリッド表示
-            // 先に提案を描画
-            for (let i = 0; i < state.settings.teamSize; i++) {
-                displaySuggestions({ team: 'ally', index: i }, runAnalysis('Self-Analysis', getThreats(state.allyTeam[i]) || []));
-                displaySuggestions({ team: 'enemy', index: i }, runAnalysis('Threat-Elimination', state.enemyTeam[i]));
-            }
-            displaySuggestions('global', runAnalysis('Strategic-Optimization'));
-            // その上に線を引く
+            toggleRelationView(true);
             setTimeout(() => { drawRelationLines(); drawSynergyLines(); }, 50);
         } else {
-            // 通常の提案表示
+            toggleRelationView(false);
+            const myHeroId = state.allyTeam[state.myHeroSlotIndex];
             for (let i = 0; i < state.settings.teamSize; i++) {
                 if (state.allyTeam[i]) {
                     const mode = i === state.myHeroSlotIndex ? 'Self-Analysis' : 'Ally-Support';
@@ -230,7 +230,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 displaySuggestions('global', runAnalysis('Strategic-Optimization'));
             }
         }
-        toggleRelationView(isAllFilled());
     }
     function runAnalysis(mode, analysisTarget) {
         let scores = calculateReturnScores(mode, analysisTarget);
